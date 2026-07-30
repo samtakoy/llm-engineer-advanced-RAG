@@ -25,6 +25,7 @@ class AppConfig:
         llm_reasoning_effort: уровень reasoning (low, medium, high) или None.
         embedding_model: имя модели эмбеддингов из HuggingFace.
         documents_dir: папка с исходными документами.
+        parsed_dir: папка, в которую выгружается нарезка для просмотра.
         chroma_dir: папка, в которой ChromaDB хранит векторы.
         chroma_collection: имя коллекции векторов.
         chunk_size: размер чанка в токенах.
@@ -44,6 +45,7 @@ class AppConfig:
     embedding_model: str
 
     documents_dir: Path
+    parsed_dir: Path
     chroma_dir: Path
     chroma_collection: str
 
@@ -71,6 +73,7 @@ class AppConfig:
             embedding_model = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-small"),
 
             documents_dir = PROJECT_ROOT / os.getenv("DOCUMENTS_DIR", "documents"),
+            parsed_dir = PROJECT_ROOT / os.getenv("PARSED_DIR", "parsed"),
             chroma_dir = PROJECT_ROOT / os.getenv("CHROMA_DIR", "chroma"),
             chroma_collection = os.getenv("CHROMA_COLLECTION", "documents"),
 

@@ -3,15 +3,17 @@
 Команды:
     uv run main.py              — поднять веб-чат;
     uv run main.py --reindex    — перестроить индекс и поднять чат;
-    uv run main.py ask "вопрос" — один вопрос в терминале.
+    uv run main.py ask "вопрос" — один вопрос в терминале;
+    uv run main.py parse        — выгрузить нарезку в parsed/ для просмотра.
 """
 import argparse
 
 from rag_assistant.config import AppConfig
+from rag_assistant.dump import write_corpus
 from rag_assistant.engine import RagEngine
 from rag_assistant.index import open_index
 from rag_assistant.ingest import load_documents
-from rag_assistant.models import configure_global_settings
+from rag_assistant.models import configure_global_settings, create_node_parser
 from rag_assistant.ui import build_app
 
 
@@ -45,9 +47,10 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "command",
         nargs = "?",
-        choices = ["ui", "ask"],
+        choices = ["ui", "ask", "parse"],
         default = "ui",
-        help = "ui — веб-чат (по умолчанию), ask — один вопрос в терминале",
+        help = "ui — веб-чат (по умолчанию), ask — один вопрос в терминале, "
+               "parse — выгрузить нарезку в parsed/",
     )
     parser.add_argument("question", nargs = "?", default = None, help = "вопрос для команды ask")
     parser.add_argument("--reindex", action = "store_true", help = "перестроить индекс с нуля")
@@ -67,7 +70,20 @@ def main() -> None:
         None.
     """
     arguments = parse_arguments()
-    engine = create_engine(config = AppConfig.from_env(), reindex = arguments.reindex)
+    config = AppConfig.from_env()
+
+    if arguments.command == "parse":
+        written = write_corpus(
+            documents = load_documents(config),
+            node_parser = create_node_parser(config),
+            target_dir = config.parsed_dir,
+        )
+        print(f"Записано {sum(written.values())} узлов в {config.parsed_dir}")
+        for source, count in sorted(written.items()):
+            print(f"  {source:<40} {count:>5}")
+        return
+
+    engine = create_engine(config = config, reindex = arguments.reindex)
 
     if arguments.command == "ask":
         answer = engine.ask(arguments.question)

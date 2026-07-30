@@ -68,6 +68,21 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
     )
 
 
+def create_node_parser(config: AppConfig) -> SentenceSplitter:
+    """Создаёт сплиттер документов на узлы.
+
+    Аргументы:
+        config: конфигурация приложения.
+
+    Возвращает:
+        Сплиттер с размером чанка и перекрытием из конфигурации.
+    """
+    return SentenceSplitter(
+        chunk_size = config.chunk_size,
+        chunk_overlap = config.chunk_overlap,
+    )
+
+
 def configure_global_settings(config: AppConfig) -> None:
     """Прописывает модели и сплиттер в глобальный Settings LlamaIndex.
 
@@ -79,7 +94,4 @@ def configure_global_settings(config: AppConfig) -> None:
     """
     Settings.llm = create_llm(config)
     Settings.embed_model = create_embedding_model(config)
-    Settings.node_parser = SentenceSplitter(
-        chunk_size = config.chunk_size,
-        chunk_overlap = config.chunk_overlap,
-    )
+    Settings.node_parser = create_node_parser(config)
