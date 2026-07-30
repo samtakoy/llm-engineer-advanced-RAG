@@ -92,6 +92,7 @@ src/rag_assistant/
     config.py        настройки из .env
     models.py        LLM, эмбеддер, сплиттер
     ingest.py        чтение папки в Document
+    filters.py       отсев страниц без содержания
     dump.py          выгрузка нарезки в markdown
     index.py         построение и открытие индекса
     engine.py        вопрос -> ответ со ссылками
@@ -111,7 +112,7 @@ src/scripts/
 |---|---|
 | Модель, размер чанка, `top_k` | `.env` |
 | Правила ответа и вид ссылки | `prompts.py` |
-| Убрать мусор из документов | `ingest.py`, между чтением и возвратом списка |
+| Убрать мусор из документов | `filters.py`, новое правило рядом с `is_contents_page` |
 | Другие форматы файлов | `ingest.py`, параметры `SimpleDirectoryReader` |
 | Стратегия поиска, реранкер | `engine.py`, аргументы `as_query_engine` |
 
