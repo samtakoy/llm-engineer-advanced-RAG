@@ -43,6 +43,10 @@ def create_llm(config: AppConfig) -> OpenAILike:
         context_window = config.llm_context_window,
         timeout = config.llm_timeout_seconds,
         is_chat_model = True,
+        # Без этого флага LlamaIndex не кладёт в запрос список tools, но всё
+        # равно требует вызова инструмента, и сервер отвечает ошибкой 400.
+        # Ломается всё, что просит структурированный ответ.
+        is_function_calling_model = True,
         additional_kwargs = additional_kwargs,
     )
 
