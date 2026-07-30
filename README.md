@@ -91,8 +91,10 @@ main.py              точка входа и сборка пайплайна
 src/rag_assistant/
     config.py        настройки из .env
     models.py        LLM, эмбеддер, сплиттер
-    ingest.py        чтение папки в Document
-    filters.py       отсев страниц без содержания
+    ingest/
+        loader.py    чтение папки в Document
+        normalize.py починка markdown после разбора PDF
+        filters.py   отсев страниц без содержания
     dump.py          выгрузка нарезки в markdown
     index.py         построение и открытие индекса
     engine.py        вопрос -> ответ со ссылками
@@ -102,7 +104,9 @@ src/scripts/
     fetch_reports.py скачивание отчётов с портала раскрытия
 ```
 
-Пайплайн: `ingest.load_documents` отдаёт по одному `Document` на страницу PDF, `Settings.node_parser` режет их на чанки, `index.open_index` векторизует и складывает в ChromaDB, `engine.RagEngine` ищет и просит модель ответить.
+Пайплайн: `ingest.load_documents` разбирает PDF в markdown через `pymupdf4llm` и отдаёт по одному `Document` на страницу, `Settings.node_parser` режет их на чанки, `index.open_index` векторизует и складывает в ChromaDB, `engine.RagEngine` ищет и просит модель ответить.
+
+Разбор в markdown нужен ради таблиц: у них сохраняются шапка колонок и ячейки.
 
 Нарезкой, эмбеддингами и поиском занимается фреймворк — своего кода для этого нет.
 
@@ -112,8 +116,9 @@ src/scripts/
 |---|---|
 | Модель, размер чанка, `top_k` | `.env` |
 | Правила ответа и вид ссылки | `prompts.py` |
-| Убрать мусор из документов | `filters.py`, новое правило рядом с `is_contents_page` |
-| Другие форматы файлов | `ingest.py`, параметры `SimpleDirectoryReader` |
+| Убрать мусор из документов | `ingest/filters.py`, новое правило рядом с `is_contents_page` |
+| Починить разметку после разбора | `ingest/normalize.py`, новое правило рядом с существующими |
+| Другие форматы файлов | `ingest/loader.py`, функция `read_pdf` рядом с ней |
 | Стратегия поиска, реранкер | `engine.py`, аргументы `as_query_engine` |
 
 После правок, влияющих на текст чанков, нужен `--reindex`.
