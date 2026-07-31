@@ -30,8 +30,9 @@ class AppConfig:
         parsed_dir: папка, в которую выгружается нарезка для просмотра.
         chroma_dir: папка, в которой ChromaDB хранит векторы.
         chroma_collection: имя коллекции векторов.
-        chunk_size: размер чанка в токенах.
-        chunk_overlap: перекрытие соседних чанков.
+        chunk_size: размер чанка в токенах эмбеддера, вместе с метаданными.
+            Должен помещаться в окно эмбеддера, иначе хвост чанка не векторизуется.
+        chunk_overlap: перекрытие соседних чанков в тех же токенах.
         top_k: сколько фрагментов забирает поиск.
     """
 
@@ -85,7 +86,9 @@ class AppConfig:
             chroma_dir = PROJECT_ROOT / os.getenv("CHROMA_DIR", "chroma"),
             chroma_collection = os.getenv("CHROMA_COLLECTION", "documents"),
 
-            chunk_size = int(os.getenv("CHUNK_SIZE", "1000")),
-            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200")),
+            # Окно multilingual-e5-small — 512 токенов, остаток оставлен под
+            # служебные токены и префикс "passage:", который эмбеддер ставит сам.
+            chunk_size = int(os.getenv("CHUNK_SIZE", "480")),
+            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "96")),
             top_k = int(os.getenv("TOP_K", "5")),
         )

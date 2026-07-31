@@ -1,9 +1,12 @@
 """Модели LlamaIndex: LLM, эмбеддер, сплиттер и их регистрация в Settings."""
+from typing import Callable, List
+
 import torch
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
+from transformers import AutoTokenizer
 
 from rag_assistant.config import AppConfig
 
@@ -76,8 +79,30 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
     )
 
 
+def create_embedding_tokenizer(config: AppConfig) -> Callable[[str], List[int]]:
+    """Создаёт счётчик токенов той модели, которая будет векторизовать текст.
+
+    Аргументы:
+        config: конфигурация приложения.
+
+    Возвращает:
+        Функцию, считающую токены так же, как их считает эмбеддер.
+    """
+    tokenizer = AutoTokenizer.from_pretrained(config.embedding_model)
+
+    # Токенизатор здесь только считает, а не готовит вход модели: предупреждение
+    # о превышении длины выдал бы сам сплиттер, которому эту длину и мерить.
+    tokenizer.model_max_length = int(1e9)
+
+    return tokenizer.encode
+
+
 def create_node_parser(config: AppConfig) -> SentenceSplitter:
     """Создаёт сплиттер документов на узлы.
+
+    Размер чанка меряется токенизатором эмбеддера, а не заданным по умолчанию
+    токенизатором OpenAI: у них разное дробление русского текста, и на настройках
+    по умолчанию чанк не помещался в окно эмбеддера, а лишнее молча отбрасывалось.
 
     Аргументы:
         config: конфигурация приложения.
@@ -88,6 +113,7 @@ def create_node_parser(config: AppConfig) -> SentenceSplitter:
     return SentenceSplitter(
         chunk_size = config.chunk_size,
         chunk_overlap = config.chunk_overlap,
+        tokenizer = create_embedding_tokenizer(config),
     )
 
 
