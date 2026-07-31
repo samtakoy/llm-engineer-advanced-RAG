@@ -1,7 +1,11 @@
 """Проверка метрик прогона контрольных вопросов."""
 import json
+
+import pytest
+
 from eval.cases import QUESTIONS_PATH, Case, Page, load_cases, parse_page
 from eval.judge import correctness, faithfulness, parse_verdict
+from eval.report import SnapshotBelongsToOtherSettings, check_snapshot_free
 from eval.metrics import (
     count_covered_groups,
     find_citations,
@@ -309,3 +313,20 @@ def test_parse_page_expands_alias() -> None:
     page = parse_page(reference = "FY2025:10", documents = {"FY2025": "отчёт.pdf"})
 
     assert page == Page(document = "отчёт.pdf", number = 10)
+
+
+def test_snapshot_with_other_settings_is_protected(tmp_path) -> None:
+    """Снимок другой модели не затирается: восстановить его нельзя, снимался минутами."""
+    path = tmp_path / "baseline.json"
+    path.write_text(json.dumps({"settings": {"llm_model": "большая"}}), encoding = "utf-8")
+
+    with pytest.raises(SnapshotBelongsToOtherSettings) as conflict:
+        check_snapshot_free(path = path, settings = {"llm_model": "слабая"})
+
+    assert "большая" in str(conflict.value)
+    assert "слабая" in str(conflict.value)
+
+
+def test_snapshot_with_same_settings_is_overwritten() -> None:
+    """Пересъёмка теми же настройками — обычное обновление, не конфликт."""
+    check_snapshot_free(path = QUESTIONS_PATH.parent / "нет-такого.json", settings = {"a": 1})

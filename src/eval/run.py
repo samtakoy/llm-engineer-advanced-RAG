@@ -20,7 +20,7 @@ from llama_index.core.llms import LLM
 from eval.cases import QUESTIONS_PATH, Case, Page, load_cases
 from eval.judge import judge_answer
 from eval.metrics import measure, summarize
-from eval.report import print_summary, print_table, save_report
+from eval.report import SnapshotBelongsToOtherSettings, print_summary, print_table, save_report
 from eval.results import CaseRun, to_pages
 from rag_assistant.config import AppConfig
 from rag_assistant.engine import RagEngine, Source, to_source
@@ -176,7 +176,7 @@ def main() -> None:
     cases = load_cases(QUESTIONS_PATH)
     known_pages = load_known_pages(config)
     engine = RagEngine(index = index, config = config) if arguments.mode == "full" else None
-    judge = create_llm(config) if arguments.judge else None
+    judge = create_llm(config = config, model = config.judge_model) if arguments.judge else None
 
     runs = []
     for case in cases:
@@ -199,7 +199,13 @@ def main() -> None:
     )
     print_table(runs)
     print_summary(summary, runs)
-    save_report(runs = runs, summary = summary, config = config, name = arguments.name)
+    try:
+        save_report(runs = runs, summary = summary, config = config, name = arguments.name)
+    except SnapshotBelongsToOtherSettings as conflict:
+        # Прогон уже сделан, терять его из-за занятого имени нельзя: показываем причину,
+        # результаты выше в терминале остаются.
+        print(conflict, file = sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

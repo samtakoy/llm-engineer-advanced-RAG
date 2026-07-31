@@ -1,6 +1,7 @@
 """Вывод результатов прогона: таблица в терминал, отчёт в markdown и json."""
 import json
 from dataclasses import asdict
+from pathlib import Path
 from typing import Dict, List
 
 from eval.cases import Case
@@ -171,8 +172,10 @@ def render_report(runs: List[CaseRun], summary: Dict[str, Measure], config: AppC
     lines = [
         "# Прогон контрольных вопросов",
         "",
-        f"Модель: `{config.llm_model}` · эмбеддер: `{config.embedding_model}` · "
-        f"чанк {config.chunk_size}/{config.chunk_overlap} · top-k {config.top_k}",
+        " · ".join(
+            f"{name}: `{value}`" if isinstance(value, str) else f"{name}: {value}"
+            for name, value in describe_settings(config = config, runs = runs).items()
+        ),
         "",
         "## Итого",
         "",
@@ -278,6 +281,76 @@ def render_verdict(verdict: Verdict) -> List[str]:
     return lines
 
 
+def describe_settings(config: AppConfig, runs: List[CaseRun]) -> dict:
+    """Собирает настройки, при которых снят прогон.
+
+    Без них два снимка невозможно сравнить: непонятно, что именно менялось.
+    Модель судьи записывается, только если судья вызывался.
+
+    Аргументы:
+        config: конфигурация приложения.
+        runs: результаты прогона.
+
+    Возвращает:
+        Настройки прогона.
+    """
+    settings = {
+        "llm_model": config.llm_model,
+        "embedding_model": config.embedding_model,
+        "chunk_size": config.chunk_size,
+        "chunk_overlap": config.chunk_overlap,
+        "top_k": config.top_k,
+    }
+
+    if any(run.verdict is not None for run in runs):
+        settings["judge_model"] = config.judge_model
+
+    return settings
+
+
+class SnapshotBelongsToOtherSettings(RuntimeError):
+    """Снимок с этим именем снят при других настройках."""
+
+
+def check_snapshot_free(path: Path, settings: dict) -> None:
+    """Не даёт затереть снимок, снятый при других настройках.
+
+    Пересъёмка с теми же настройками разрешена — это обычное обновление. А вот прогон
+    на другой модели должен лечь рядом, а не поверх: снимок стоит минут, восстановить
+    его нельзя, и сравнивать после затирания будет не с чем.
+
+    Аргументы:
+        path: путь к json прошлого снимка.
+        settings: настройки текущего прогона.
+
+    Возвращает:
+        None.
+
+    Исключения:
+        SnapshotBelongsToOtherSettings: снимок занят другими настройками.
+    """
+    if not path.exists():
+        return
+
+    stored = json.loads(path.read_text(encoding = "utf-8")).get("settings", {})
+    changed = {
+        key: (stored.get(key), value)
+        for key, value in settings.items()
+        if stored.get(key) != value
+    }
+
+    if not changed:
+        return
+
+    details = "; ".join(
+        f"{key}: в снимке {was}, сейчас {now}" for key, (was, now) in sorted(changed.items())
+    )
+    raise SnapshotBelongsToOtherSettings(
+        f"Снимок «{path.stem}» снят при других настройках ({details}). "
+        f"Возьмите другое имя: --name <имя>",
+    )
+
+
 def verdict_payload(verdict: Verdict | None) -> dict | None:
     """Готовит разбор судьи к записи в json.
 
@@ -313,17 +386,16 @@ def save_report(
 
     Возвращает:
         None.
+
+    Исключения:
+        SnapshotBelongsToOtherSettings: снимок с этим именем снят при других настройках.
     """
     REPORTS_DIR.mkdir(parents = True, exist_ok = True)
+    settings = describe_settings(config = config, runs = runs)
+    check_snapshot_free(path = REPORTS_DIR / f"{name}.json", settings = settings)
 
     payload = {
-        "settings": {
-            "llm_model": config.llm_model,
-            "embedding_model": config.embedding_model,
-            "chunk_size": config.chunk_size,
-            "chunk_overlap": config.chunk_overlap,
-            "top_k": config.top_k,
-        },
+        "settings": settings,
         "summary": {name: asdict(measure) for name, measure in summary.items()},
         "cases": [
             {

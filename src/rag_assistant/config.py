@@ -17,7 +17,9 @@ class AppConfig:
     Атрибуты:
         llm_base_url: адрес OpenAI-совместимого сервера.
         llm_api_key: ключ сервера.
-        llm_model: идентификатор модели на сервере.
+        llm_model: идентификатор модели, которая отвечает на вопросы.
+        judge_model: идентификатор модели, которая оценивает ответы при прогоне
+            контрольных вопросов. По умолчанию та же, что отвечает.
         llm_temperature: температура генерации.
         llm_max_tokens: лимит токенов ответа.
         llm_context_window: размер контекстного окна модели.
@@ -36,6 +38,7 @@ class AppConfig:
     llm_base_url: str
     llm_api_key: str
     llm_model: str
+    judge_model: str
     llm_temperature: float
     llm_max_tokens: int
     llm_context_window: int
@@ -60,10 +63,13 @@ class AppConfig:
         Возвращает:
             AppConfig со значениями по умолчанию там, где переменная не задана.
         """
+        local_model = os.getenv("LOCAL_MODEL", "google/gemma-4-26b-a4b-qat")
+
         return cls(
             llm_base_url = os.getenv("LOCAL_BASE_URL", "http://localhost:1234/v1"),
             llm_api_key = os.getenv("LOCAL_API_KEY", "lm-studio"),
-            llm_model = os.getenv("LOCAL_MODEL", "google/gemma-4-26b-a4b-qat"),
+            llm_model = local_model,
+            judge_model = os.getenv("JUDGE_MODEL") or local_model,
             llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.1")),
             llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "4096")),
             llm_context_window = int(os.getenv("LLM_CONTEXT_WINDOW", "32768")),

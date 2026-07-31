@@ -21,11 +21,13 @@ def select_device() -> str:
     return "cpu"
 
 
-def create_llm(config: AppConfig) -> OpenAILike:
+def create_llm(config: AppConfig, model: str) -> OpenAILike:
     """Создаёт клиент к локальному OpenAI-совместимому серверу.
 
     Аргументы:
         config: конфигурация приложения.
+        model: идентификатор модели на сервере. Задаётся явно, потому что
+            отвечать и судить могут разные модели.
 
     Возвращает:
         Клиент OpenAILike, настроенный на локальную модель.
@@ -35,7 +37,7 @@ def create_llm(config: AppConfig) -> OpenAILike:
         additional_kwargs["reasoning_effort"] = config.llm_reasoning_effort
 
     return OpenAILike(
-        model = config.llm_model,
+        model = model,
         api_base = config.llm_base_url,
         api_key = config.llm_api_key,
         temperature = config.llm_temperature,
@@ -98,6 +100,6 @@ def configure_global_settings(config: AppConfig) -> None:
     Возвращает:
         None.
     """
-    Settings.llm = create_llm(config)
+    Settings.llm = create_llm(config = config, model = config.llm_model)
     Settings.embed_model = create_embedding_model(config)
     Settings.node_parser = create_node_parser(config)
