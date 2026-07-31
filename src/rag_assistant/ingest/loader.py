@@ -9,8 +9,12 @@ from rag_assistant.config import AppConfig
 from rag_assistant.ingest.filters import drop_service_pages
 from rag_assistant.ingest.normalize import normalize_page
 
-# Метаданные для служебных нужд: в ссылке не нужны, в эмбеддинге мешают.
-SERVICE_METADATA_KEYS = ["file_path"]
+# Путь к файлу нужен только при отладке: ни в ссылке, ни в ответе он не участвует.
+# Номер страницы модель видеть должна — по нему она проставляет ссылку, — но в вектор
+# он попадать не должен: у всех узлов это одинаковое по форме поле со случайным для
+# смысла числом, то есть шум.
+EXCLUDED_FROM_EMBEDDING = ("file_path", "page_label")
+EXCLUDED_FROM_PROMPT = ("file_path",)
 
 
 def load_documents(config: AppConfig) -> List[Document]:
@@ -71,5 +75,5 @@ def hide_service_metadata(documents: List[Document]) -> None:
         None.
     """
     for document in documents:
-        document.excluded_embed_metadata_keys = SERVICE_METADATA_KEYS
-        document.excluded_llm_metadata_keys = SERVICE_METADATA_KEYS
+        document.excluded_embed_metadata_keys = list(EXCLUDED_FROM_EMBEDDING)
+        document.excluded_llm_metadata_keys = list(EXCLUDED_FROM_PROMPT)

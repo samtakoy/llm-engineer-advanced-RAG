@@ -1,68 +1,111 @@
 """Векторный индекс: ChromaDB как хранилище, VectorStoreIndex как логический слой."""
-from typing import List
+from typing import Callable, List
 
 import chromadb
+from chromadb.api import ClientAPI
+from chromadb.api.models.Collection import Collection
 from llama_index.core import Document, StorageContext, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from rag_assistant.config import AppConfig
+from rag_assistant.index_signature import build_signature, verify_signature
+
+# Векторы нормализованы, поэтому косинус и заданная по умолчанию l2 дают один и тот же
+# порядок выдачи. Косинусное расстояние выбрано ради границ [0, 2]: на нём осмысленно
+# ставить порог отсечения. Метрика задаётся только в момент создания коллекции.
+COLLECTION_CONFIGURATION = {"hnsw": {"space": "cosine"}}
 
 
-def build_index(config: AppConfig, documents: List[Document]) -> VectorStoreIndex:
+def find_collection(client: ClientAPI, name: str) -> Collection | None:
+    """Находит коллекцию по имени.
+
+    Аргументы:
+        client: клиент ChromaDB.
+        name: имя коллекции.
+
+    Возвращает:
+        Коллекцию либо None, если её ещё нет.
+    """
+    if name not in [collection.name for collection in client.list_collections()]:
+        return None
+
+    return client.get_collection(name = name)
+
+
+def build_index(
+    config: AppConfig,
+    client: ClientAPI,
+    documents: List[Document],
+) -> VectorStoreIndex:
     """Строит индекс с нуля: документы режутся на узлы и векторизуются.
 
     Аргументы:
         config: конфигурация приложения.
+        client: клиент ChromaDB.
         documents: документы для индексации.
 
     Возвращает:
-        Индекс поверх коллекции ChromaDB.
+        Индекс поверх новой коллекции ChromaDB.
     """
-    client = chromadb.PersistentClient(path = str(config.chroma_dir))
-    collection = client.get_or_create_collection(name = config.chroma_collection)
-    vector_store = ChromaVectorStore(chroma_collection = collection)
+    collection = client.create_collection(
+        name = config.chroma_collection,
+        configuration = COLLECTION_CONFIGURATION,
+        metadata = build_signature(config),
+    )
 
     return VectorStoreIndex.from_documents(
         documents,
-        storage_context = StorageContext.from_defaults(vector_store = vector_store),
+        storage_context = StorageContext.from_defaults(
+            vector_store = ChromaVectorStore(chroma_collection = collection),
+        ),
         show_progress = True,
     )
 
 
-def load_index(config: AppConfig) -> VectorStoreIndex:
+def load_index(collection: Collection) -> VectorStoreIndex:
     """Подключается к уже построенному индексу без повторной векторизации.
 
     Аргументы:
-        config: конфигурация приложения.
+        collection: коллекция с готовыми векторами.
 
     Возвращает:
         Индекс поверх существующей коллекции ChromaDB.
     """
-    client = chromadb.PersistentClient(path = str(config.chroma_dir))
-    collection = client.get_or_create_collection(name = config.chroma_collection)
-
     return VectorStoreIndex.from_vector_store(
         vector_store = ChromaVectorStore(chroma_collection = collection),
     )
 
 
-def open_index(config: AppConfig, documents: List[Document], rebuild: bool) -> VectorStoreIndex:
+def open_index(
+    config: AppConfig,
+    load_documents: Callable[[], List[Document]],
+    rebuild: bool,
+) -> VectorStoreIndex:
     """Возвращает готовый к запросам индекс, строя его только при необходимости.
 
     Аргументы:
         config: конфигурация приложения.
-        documents: документы для индексации, если индекс придётся строить.
+        load_documents: чтение документов, вызывается только если индекс строится.
+            Разбор PDF занимает секунды и на готовом индексе не нужен.
         rebuild: True — удалить коллекцию и проиндексировать заново.
 
     Возвращает:
         Индекс, готовый отдавать движок запросов.
+
+    Исключения:
+        IndexSettingsChanged: готовый индекс построен на других настройках.
     """
     client = chromadb.PersistentClient(path = str(config.chroma_dir))
+    collection = find_collection(client = client, name = config.chroma_collection)
 
-    if rebuild and config.chroma_collection in [c.name for c in client.list_collections()]:
+    # Пустая коллекция остаётся от прерванной сборки: метрика и подпись настроек
+    # задаются при создании, поэтому её проще пересоздать, чем достраивать.
+    if collection is not None and (rebuild or collection.count() == 0):
         client.delete_collection(name = config.chroma_collection)
+        collection = None
 
-    if client.get_or_create_collection(name = config.chroma_collection).count() > 0:
-        return load_index(config)
+    if collection is not None:
+        verify_signature(collection = collection, config = config)
+        return load_index(collection)
 
-    return build_index(config = config, documents = documents)
+    return build_index(config = config, client = client, documents = load_documents())

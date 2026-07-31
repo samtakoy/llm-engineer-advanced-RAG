@@ -59,7 +59,7 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
 
     Возвращает:
         Модель HuggingFaceEmbedding. Моделям семейства e5 добавляются
-        обязательные префиксы "query: " и "passage: ".
+        обязательные префиксы "query:" и "passage:".
     """
     is_e5_family = "e5" in config.embedding_model.lower()
 
@@ -67,8 +67,10 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
         model_name = config.embedding_model,
         device = select_device(),
         normalize = True,
-        query_instruction = "query: " if is_e5_family else None,
-        text_instruction = "passage: " if is_e5_family else None,
+        # Пробел между префиксом и текстом ставит сам llama-index. Свой пробел
+        # дал бы "query:  вопрос" вместо ожидаемого моделью "query: вопрос".
+        query_instruction = "query:" if is_e5_family else None,
+        text_instruction = "passage:" if is_e5_family else None,
     )
 
 

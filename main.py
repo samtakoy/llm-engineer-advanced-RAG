@@ -7,11 +7,14 @@
     uv run main.py parse        — выгрузить нарезку в parsed/ для просмотра.
 """
 import argparse
+import sys
+from functools import partial
 
 from rag_assistant.config import AppConfig
 from rag_assistant.dump import write_corpus
 from rag_assistant.engine import RagEngine
 from rag_assistant.index import open_index
+from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
 from rag_assistant.models import configure_global_settings, create_node_parser
 from rag_assistant.ui import build_app
@@ -30,7 +33,7 @@ def create_engine(config: AppConfig, reindex: bool) -> RagEngine:
     configure_global_settings(config)
     index = open_index(
         config = config,
-        documents = load_documents(config),
+        load_documents = partial(load_documents, config = config),
         rebuild = reindex,
     )
 
@@ -83,7 +86,12 @@ def main() -> None:
             print(f"  {source:<40} {count:>5}")
         return
 
-    engine = create_engine(config = config, reindex = arguments.reindex)
+    try:
+        engine = create_engine(config = config, reindex = arguments.reindex)
+    except IndexSettingsChanged as mismatch:
+        # Ожидаемая ситуация, а не сбой: показываем причину без стека вызовов.
+        print(mismatch, file = sys.stderr)
+        raise SystemExit(1)
 
     if arguments.command == "ask":
         answer = engine.ask(arguments.question)
