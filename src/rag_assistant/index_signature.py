@@ -27,6 +27,7 @@ def build_signature(config: AppConfig) -> Dict[str, str]:
     return {
         "embedding_model": config.embedding_model,
         "chunk_size": str(config.chunk_size),
+        "parent_chunk_size": str(config.parent_chunk_size),
         "chunk_overlap": str(config.chunk_overlap),
     }
 

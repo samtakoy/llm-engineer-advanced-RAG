@@ -30,8 +30,14 @@ class AppConfig:
         parsed_dir: папка, в которую выгружается нарезка для просмотра.
         chroma_dir: папка, в которой ChromaDB хранит векторы.
         chroma_collection: имя коллекции векторов.
-        chunk_size: размер чанка в токенах эмбеддера, вместе с метаданными.
-            Должен помещаться в окно эмбеддера, иначе хвост чанка не векторизуется.
+        docstore_path: файл, в котором лежат узлы вместе с родительскими.
+            Векторы Chroma хранит сама, но связи «родитель — потомок» ей неизвестны,
+            а без них не собрать крупный фрагмент из найденных мелких.
+        chunk_size: размер листового чанка в токенах эмбеддера, вместе с метаданными.
+            Должен помещаться в окно эмбеддера: то, что за его границей,
+            в вектор не попадает и для поиска не существует.
+        parent_chunk_size: размер родительского узла в тех же токенах. Векторизации
+            не подлежит, поэтому окном эмбеддера не ограничен.
         chunk_overlap: перекрытие соседних чанков в тех же токенах.
         top_k: сколько фрагментов забирает поиск.
     """
@@ -52,8 +58,10 @@ class AppConfig:
     parsed_dir: Path
     chroma_dir: Path
     chroma_collection: str
+    docstore_path: Path
 
     chunk_size: int
+    parent_chunk_size: int
     chunk_overlap: int
     top_k: int
 
@@ -67,6 +75,10 @@ class AppConfig:
 
         local_model = os.getenv("LOCAL_MODEL", "google/gemma-4-e2b")
         # local_model = os.getenv("LOCAL_MODEL", "google/gemma-4-26b-a4b-qat")
+
+        # Докстор лежит рядом с векторами: удаление папки сбрасывает индекс целиком,
+        # без риска оставить связи узлов от одной сборки, а векторы от другой.
+        chroma_dir = PROJECT_ROOT / os.getenv("CHROMA_DIR", "chroma")
 
         return cls(
             llm_base_url = os.getenv("LOCAL_BASE_URL", "http://localhost:1234/v1"),
@@ -83,12 +95,16 @@ class AppConfig:
 
             documents_dir = PROJECT_ROOT / os.getenv("DOCUMENTS_DIR", "documents"),
             parsed_dir = PROJECT_ROOT / os.getenv("PARSED_DIR", "parsed"),
-            chroma_dir = PROJECT_ROOT / os.getenv("CHROMA_DIR", "chroma"),
+            chroma_dir = chroma_dir,
             chroma_collection = os.getenv("CHROMA_COLLECTION", "documents"),
+            docstore_path = chroma_dir / "docstore.json",
 
             # Окно multilingual-e5-small — 512 токенов, остаток оставлен под
             # служебные токены и префикс "passage:", который эмбеддер ставит сам.
             chunk_size = int(os.getenv("CHUNK_SIZE", "480")),
+            # Самая длинная страница корпуса — 1264 токена, поэтому при таком размере
+            # родителем становится страница целиком, а она же служит единицей ссылки.
+            parent_chunk_size = int(os.getenv("PARENT_CHUNK_SIZE", "2048")),
             chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "96")),
             top_k = int(os.getenv("TOP_K", "5")),
         )

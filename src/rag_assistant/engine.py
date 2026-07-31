@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import List
 
 from llama_index.core import VectorStoreIndex
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.retrievers import AutoMergingRetriever
 from llama_index.core.schema import NodeWithScore
 
 from rag_assistant.config import AppConfig
@@ -41,6 +43,27 @@ class Answer:
     sources: List[Source]
 
 
+def create_retriever(index: VectorStoreIndex, config: AppConfig) -> AutoMergingRetriever:
+    """Создаёт поиск, склеивающий найденные мелкие фрагменты в крупные.
+
+    Ищет по листьям, потому что векторизованы только они. Если в выдачу попало
+    больше половины листьев одного родителя, они заменяются родителем целиком:
+    факт, разорванный границей чанка, так возвращается собранным.
+
+    Аргументы:
+        index: векторный индекс документов вместе с докстором.
+        config: конфигурация приложения.
+
+    Возвращает:
+        Поиск, готовый отдавать фрагменты по вопросу.
+    """
+    return AutoMergingRetriever(
+        vector_retriever = index.as_retriever(similarity_top_k = config.top_k),
+        storage_context = index.storage_context,
+        verbose = False,
+    )
+
+
 class RagEngine:
     """Отвечает на вопросы по проиндексированным документам."""
 
@@ -51,8 +74,8 @@ class RagEngine:
             index: векторный индекс документов.
             config: конфигурация приложения.
         """
-        self.query_engine = index.as_query_engine(
-            similarity_top_k = config.top_k,
+        self.query_engine = RetrieverQueryEngine.from_args(
+            retriever = create_retriever(index = index, config = config),
             text_qa_template = QA_TEMPLATE,
         )
 

@@ -23,7 +23,7 @@ from eval.metrics import measure, summarize
 from eval.report import SnapshotBelongsToOtherSettings, print_summary, print_table, save_report
 from eval.results import CaseRun, to_pages
 from rag_assistant.config import AppConfig
-from rag_assistant.engine import RagEngine, Source, to_source
+from rag_assistant.engine import RagEngine, Source, create_retriever, to_source
 from rag_assistant.index import find_collection, open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
@@ -64,7 +64,7 @@ def retrieve_sources(index: VectorStoreIndex, config: AppConfig, question: str) 
     Возвращает:
         Фрагменты в порядке выдачи поиска.
     """
-    retriever = index.as_retriever(similarity_top_k = config.top_k)
+    retriever = create_retriever(index = index, config = config)
 
     return [to_source(node) for node in retriever.retrieve(question)]
 

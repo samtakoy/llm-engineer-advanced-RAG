@@ -3,12 +3,17 @@ from typing import Callable, List
 
 import torch
 from llama_index.core import Settings
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import HierarchicalNodeParser, SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from transformers import AutoTokenizer
 
 from rag_assistant.config import AppConfig
+
+# Имена уровней нарезки: порядок в HierarchicalNodeParser задаёт вложенность,
+# первый уровень режет документ, каждый следующий — узлы предыдущего.
+PARENT_LEVEL = "parent"
+LEAF_LEVEL = "leaf"
 
 
 def select_device() -> str:
@@ -97,8 +102,12 @@ def create_embedding_tokenizer(config: AppConfig) -> Callable[[str], List[int]]:
     return tokenizer.encode
 
 
-def create_node_parser(config: AppConfig) -> SentenceSplitter:
-    """Создаёт сплиттер документов на узлы.
+def create_node_parser(config: AppConfig) -> HierarchicalNodeParser:
+    """Создаёт сплиттер документов на двухуровневые узлы.
+
+    Векторизуются только листья, поэтому их размер ограничен окном эмбеддера.
+    Родительский узел крупнее и нужен на выдаче: когда в неё попадает несколько
+    листьев одного родителя, поиск отдаёт модели родителя целиком.
 
     Размер чанка меряется токенизатором эмбеддера, а не заданным по умолчанию
     токенизатором OpenAI: у них разное дробление русского текста, и на настройках
@@ -108,12 +117,24 @@ def create_node_parser(config: AppConfig) -> SentenceSplitter:
         config: конфигурация приложения.
 
     Возвращает:
-        Сплиттер с размером чанка и перекрытием из конфигурации.
+        Сплиттер, дающий родительские узлы и листья со связями между ними.
     """
-    return SentenceSplitter(
-        chunk_size = config.chunk_size,
-        chunk_overlap = config.chunk_overlap,
-        tokenizer = create_embedding_tokenizer(config),
+    tokenizer = create_embedding_tokenizer(config)
+    levels = {
+        PARENT_LEVEL: config.parent_chunk_size,
+        LEAF_LEVEL: config.chunk_size,
+    }
+
+    return HierarchicalNodeParser.from_defaults(
+        node_parser_ids = list(levels),
+        node_parser_map = {
+            level: SentenceSplitter(
+                chunk_size = chunk_size,
+                chunk_overlap = config.chunk_overlap,
+                tokenizer = tokenizer,
+            )
+            for level, chunk_size in levels.items()
+        },
     )
 
 
