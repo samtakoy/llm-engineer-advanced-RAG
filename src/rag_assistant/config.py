@@ -104,7 +104,7 @@ class AppConfig:
             chunk_size = int(os.getenv("CHUNK_SIZE", "480")),
             # Самая длинная страница корпуса — 1264 токена, поэтому при таком размере
             # родителем становится страница целиком, а она же служит единицей ссылки.
-            parent_chunk_size = int(os.getenv("PARENT_CHUNK_SIZE", "2048")),
-            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "96")),
+            parent_chunk_size = int(os.getenv("PARENT_CHUNK_SIZE", "1000")),
+            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200")),
             top_k = int(os.getenv("TOP_K", "5")),
         )

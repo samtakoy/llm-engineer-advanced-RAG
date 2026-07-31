@@ -1,3 +1,21 @@
+## Используемый модели
+
+Llm
+LOCAL_MODEL=google/gemma-4-e2b
+
+Судья
+JUDGE_MODEL=google/gemma-4-26b-a4b-qat
+
+
+LOCAL_REASONING_EFFORT= - не ставим и отключаем thinking в LmStudio
+
+
+Эмбедер
+
+#EMBEDDING_MODEL=intfloat/multilingual-e5-small  - TODO удалить упоминания
+EMBEDDING_MODEL=BAAI/bge-m3
+
+
 ## Базовый раг
 
 Чистка pdf
@@ -83,7 +101,7 @@ parsed
 Всё в `src/eval`, описание метрик и запуска — в [src/eval/README.md](../src/eval/README.md).
 
 Снимок базового RAG с метриками и настройками, при которых снят:
-[docs/eval/baseline.md](eval/baseline.md).
+[docs/eval/baseline.md](eval/baseline.md.bak).
 
 Для более слабой модели (google/gemma-4-e2b): TODO ссылка
 
@@ -93,6 +111,10 @@ parsed
 из 342 не помещались в окно `multilingual-e5-small`, и всё, что за 512 токенов, в вектор
 не попадало — поиск этой части текста не видел, без предупреждений. Передал сплиттеру
 токенизатор эмбеддера, `CHUNK_SIZE` 1000 → 480 — узлов длиннее окна стало 0 из 411.
+
+TODO удалить и в коде убрать автоподстановку размера чанка - добавить выброс исключения если натсройка больше поддерживаемой эмбедером
+
+TODO перегенерировать бейзлайны
 
 ## HierarchicalNodeParser + AutoMergingRetriever поверх SentenceSplitter
 
@@ -104,3 +126,16 @@ parsed
 Полезным осталось: докстор наполнен (553 узла) — снят блокер для BM25, `from_vector_store`
 его не наполняет.
 
+## MarkdownNodeParser
+
+Почему? Профит? - даёт поле section в метаданных.
+
+### Чистка 
+
+### Перенос стека заголовков через границу страницы в loader.py — иначе раздел, начавшийся на стр. 43, теряется на стр. 44.
+
+
+
+# TODO 
+- не забыть env привести в порядок - в example все переложить
+- ui удалить скорее всего

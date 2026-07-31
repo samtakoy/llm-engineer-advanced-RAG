@@ -4,6 +4,7 @@ from typing import List
 
 import pymupdf4llm
 from llama_index.core import Document
+from pymupdf4llm.ocr import OCRMode
 
 from rag_assistant.config import AppConfig
 from rag_assistant.ingest.filters import drop_service_pages
@@ -49,7 +50,15 @@ def read_pdf(pdf_path: Path) -> List[Document]:
     Возвращает:
         Страницы файла в markdown с метаданными.
     """
-    pages = pymupdf4llm.to_markdown(str(pdf_path), page_chunks = True, show_progress = False)
+    # Отчеты содержат текстовый слой, распознавание не нужно. По умолчанию pymupdf4llm
+    # включает его для страниц, которые счел картинками, причем с английской моделью
+    # языка, — на русском документе это молча дало бы мусор в индексе.
+    pages = pymupdf4llm.to_markdown(
+        str(pdf_path),
+        page_chunks = True,
+        show_progress = False,
+        use_ocr = OCRMode.NEVER,
+    )
 
     return [
         Document(

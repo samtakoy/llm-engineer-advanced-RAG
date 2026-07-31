@@ -62,5 +62,5 @@ def verify_signature(collection: Collection, config: AppConfig) -> None:
     )
     raise IndexSettingsChanged(
         f"Индекс не соответствует настройкам ({details}). "
-        f"Перестроить: uv run main.py --reindex",
+        f"Перестроить: uv run main.py reindex",
     )

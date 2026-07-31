@@ -2,13 +2,15 @@
 
 Команды:
     uv run main.py              — поднять веб-чат;
-    uv run main.py --reindex    — перестроить индекс и поднять чат;
+    uv run main.py reindex      — перестроить индекс с нуля и выйти;
     uv run main.py ask "вопрос" — один вопрос в терминале;
     uv run main.py parse        — выгрузить нарезку в parsed/ для просмотра.
 """
 import argparse
 import sys
 from functools import partial
+
+from llama_index.core import VectorStoreIndex
 
 from rag_assistant.config import AppConfig
 from rag_assistant.dump import write_corpus
@@ -20,43 +22,42 @@ from rag_assistant.models import configure_global_settings, create_node_parser
 from rag_assistant.ui import build_app
 
 
-def create_engine(config: AppConfig, reindex: bool) -> RagEngine:
-    """Поднимает пайплайн: модели, документы, индекс, движок запросов.
+def prepare_index(config: AppConfig, rebuild: bool) -> VectorStoreIndex:
+    """Поднимает нижнюю часть пайплайна: модели, документы, индекс.
 
     Аргументы:
         config: конфигурация приложения.
-        reindex: True — перестроить индекс с нуля.
+        rebuild: True — перестроить индекс с нуля.
 
     Возвращает:
-        Готовый к запросам движок.
+        Индекс, готовый отдавать движок запросов.
     """
     configure_global_settings(config)
-    index = open_index(
+
+    return open_index(
         config = config,
         load_documents = partial(load_documents, config = config),
-        rebuild = reindex,
+        rebuild = rebuild,
     )
-
-    return RagEngine(index = index, config = config)
 
 
 def parse_arguments() -> argparse.Namespace:
     """Разбирает аргументы командной строки.
 
     Возвращает:
-        Аргументы с полями command, question, reindex.
+        Аргументы с полями command и question.
     """
     parser = argparse.ArgumentParser(description = "RAG-ассистент по годовым отчётам")
     parser.add_argument(
         "command",
         nargs = "?",
-        choices = ["ui", "ask", "parse"],
+        choices = ["ui", "ask", "reindex", "parse"],
         default = "ui",
         help = "ui — веб-чат (по умолчанию), ask — один вопрос в терминале, "
+               "reindex — перестроить индекс с нуля и выйти, "
                "parse — выгрузить нарезку в parsed/",
     )
     parser.add_argument("question", nargs = "?", default = None, help = "вопрос для команды ask")
-    parser.add_argument("--reindex", action = "store_true", help = "перестроить индекс с нуля")
 
     arguments = parser.parse_args()
 
@@ -87,11 +88,17 @@ def main() -> None:
         return
 
     try:
-        engine = create_engine(config = config, reindex = arguments.reindex)
+        index = prepare_index(config = config, rebuild = arguments.command == "reindex")
     except IndexSettingsChanged as mismatch:
         # Ожидаемая ситуация, а не сбой: показываем причину без стека вызовов.
         print(mismatch, file = sys.stderr)
         raise SystemExit(1)
+
+    # Движок собирается только под запросы: команде reindex он не нужен.
+    if arguments.command == "reindex":
+        return
+
+    engine = RagEngine(index = index, config = config)
 
     if arguments.command == "ask":
         answer = engine.ask(arguments.question)

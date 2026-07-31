@@ -95,7 +95,7 @@ def load_index(config: AppConfig, collection: Collection) -> VectorStoreIndex:
     if not config.docstore_path.exists():
         raise DocstoreMissing(
             f"Векторы есть, а связи узлов ({config.docstore_path}) не найдены. "
-            f"Перестроить: uv run main.py --reindex",
+            f"Перестроить: uv run main.py reindex",
         )
 
     # Пустой список узлов означает «ничего не добавлять»: векторы уже в коллекции.
