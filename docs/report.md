@@ -1,3 +1,11 @@
+## как прогонять все
+
+uv run python -m eval.run full --judge --name baseline
+uv run python -m eval.run full --judge --filters --name filters
+uv run python -m eval.run full --judge --hybrid --name hybrid
+uv run python -m eval.run full --judge --rerank --name rerank
+uv run python -m eval.run full --judge --filters --hybrid --rerank --name advanced
+
 ## Используемый модели
 
 Llm
@@ -155,6 +163,12 @@ CANDIDATE_TOP_K=20
 
 Результат: где-то ухудшился в сравнении с baseline
 - на уровне шума - после поправки размеров макс чанка реранкера - вроде метрики все чуть подросли - шум или нет?
+
+## Гибридный поиск
+
+Т.к. я выбрал изначально Chroma а не Qdrant то BM25 не будет поддерживать фильтрацию по метаданным - только векорный поиск.
+Это ограничение текущей реализации - смиримся с этим для учебного проекта.
+(Qdrant поддерживает это нативно, Chroma: BM25Retriever — это отдельный индекс, который llama-index строит в оперативной памяти из нод докстора. Там нет базы, нет where, передать фильтр некуда)
 
 # TODO 
 - не забыть env привести в порядок - в example все переложить

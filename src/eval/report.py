@@ -32,9 +32,10 @@ def print_table(runs: List[CaseRun]) -> None:
             hit = "—"
         else:
             hit = "да" if metrics.page_hit else f"{metrics.covered_groups}/{metrics.total_groups}"
+        # В таблице показывается честность: сколько разобранных ссылок ведёт
+        # на страницу, которая была в контексте.
         bad = metrics.invented_citations + metrics.outside_context_citations
-        total_citations = metrics.citations + metrics.malformed_citations
-        citations = f"{metrics.citations - bad}/{total_citations}" if total_citations else "—"
+        citations = f"{metrics.citations - bad}/{metrics.citations}" if metrics.citations else "—"
         facts = f"{metrics.snippets_found}/{metrics.snippets_total}" if metrics.snippets_total else "—"
         print(
             f"{run.case.number:>2}  {run.case.kind:<13} {hit:<5} {facts:<6} "
@@ -84,9 +85,22 @@ def print_summary(summary: Dict[str, Measure], runs: List[CaseRun]) -> None:
     """
     print("\nИтого:")
     for name, measure in summary.items():
-        print(f"  {name:<18} {measure.value:.3f}   {format_count(measure):<22}{format_failed(measure)}")
+        print(f"  {name:<18} {format_value(measure):<5}   {format_count(measure):<22}{format_failed(measure)}")
 
     print(f"\nДиагностика:\n  {format_distinct_pages(runs)}")
+
+
+def format_value(measure: Measure) -> str:
+    """Печатает значение метрики.
+
+    Аргументы:
+        measure: итоговая метрика.
+
+    Возвращает:
+        Число либо прочерк, если считать было не по чему: нулевое значение при
+        нулевом счёте означало бы провал, которого не было.
+    """
+    return f"{measure.value:.3f}" if measure.total else "—"
 
 
 def format_count(measure: Measure) -> str:
@@ -186,7 +200,7 @@ def render_report(runs: List[CaseRun], summary: Dict[str, Measure], config: AppC
         "|---|---|---|---|",
     ]
     lines.extend(
-        f"| {name} | {measure.value:.3f} | {format_count(measure)} | "
+        f"| {name} | {format_value(measure)} | {format_count(measure)} | "
         f"{', '.join(str(number) for number in measure.failed) or '—'} |"
         for name, measure in summary.items()
     )
@@ -234,8 +248,9 @@ def render_case(run: CaseRun) -> List[str]:
             run.answer,
             "```",
             "",
-            f"- ссылок в формате: {metrics.citations}, с нарушением формата: "
-            f"{metrics.malformed_citations}, выдуманных: {metrics.invented_citations}, "
+            f"- ссылок: {metrics.citations}, из них в формате: {metrics.formatted_citations}, "
+            f"с нарушением формата: {metrics.malformed_citations}, "
+            f"выдуманных: {metrics.invented_citations}, "
             f"вне контекста: {metrics.outside_context_citations}",
         ])
     if run.verdict is not None:

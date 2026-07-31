@@ -8,6 +8,7 @@ from eval.judge import correctness, faithfulness, parse_verdict
 from eval.report import SnapshotBelongsToOtherSettings, check_snapshot_free
 from eval.metrics import (
     count_covered_groups,
+    count_formatted_citations,
     count_malformed_citations,
     find_citations,
     is_hit,
@@ -39,6 +40,7 @@ def make_case(expected_pages: list, expected_refusal: bool) -> Case:
         expected_pages = expected_pages,
         expected_snippets = [],
         expected_refusal = expected_refusal,
+        tags = [],
         checks = "",
         distractor = "",
     )
@@ -87,11 +89,12 @@ def test_find_citations_splits_combined_reference() -> None:
 
 
 def test_citation_without_page_marker_is_malformed() -> None:
-    """Слабая модель пишет «[отчёт.pdf, 10]» без «стр.» — это нарушение формата,
-    а не отсутствие ссылки."""
+    """Слабая модель пишет «[отчёт.pdf, 10]» без «стр.»: формат нарушен, но страница
+    из ссылки понятна и на выдуманность проверяется наравне с остальными."""
     answer = "EBITDA составила 118,5 млн евро [отчёт.pdf, 10]."
 
-    assert find_citations(answer) == []
+    assert find_citations(answer) == [Page("отчёт.pdf", 10)]
+    assert count_formatted_citations(answer) == 0
     assert count_malformed_citations(answer) == 1
 
 

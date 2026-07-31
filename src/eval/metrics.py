@@ -13,14 +13,15 @@ from eval.judge import Verdict, correctness, faithfulness
 # Содержимое квадратных скобок в ответе: там лежат одна или несколько ссылок.
 CITATION_BLOCK_PATTERN = re.compile(r"\[([^\[\]]+?)\]")
 
-# Одна ссылка: «файл.pdf, стр. 8». Модель складывает несколько в одни скобки через «;»,
-# поэтому разбирать надо каждую ссылку, а не содержимое скобок целиком.
-CITATION_PATTERN = re.compile(r"\s*(?P<document>[^;]+?),\s*стр\.\s*(?P<page>\d+)\s*")
+# Ссылка в формате, заданном промптом: «имя документа, стр. 8».
+# Модель складывает несколько ссылок в одни скобки через «;», поэтому разбирается
+# каждая ссылка по отдельности, а не содержимое скобок целиком.
+CITATION_PATTERN = re.compile(r"\s*(?P<document>[^;\[\]]+?),\s*стр\.\s*(?P<page>\d+)\s*")
 
-# Попытка сослаться: в скобках упомянут файл. Слабые модели пишут «[отчёт.pdf, 10]»,
-# без «стр.». Без этого счётчика такая ссылка неотличима от её отсутствия, и модель,
-# нарушающая формат, выглядит просто молчаливой.
-CITATION_ATTEMPT_MARKER = ".pdf"
+# То же, но «стр.» необязательно: слабые модели пишут «[отчёт.pdf, 10]». Такая ссылка
+# формат нарушает, но куда она указывает — понятно, поэтому на выдуманность
+# проверяется наравне с остальными.
+READABLE_CITATION_PATTERN = re.compile(r"\s*(?P<document>[^;\[\]]+?),\s*(?:стр\.\s*)?(?P<page>\d+)\s*")
 
 REFUSAL_MARKER = "не знаю"
 
@@ -61,7 +62,9 @@ class CaseMetrics:
         unique_pages: сколько разных страниц в выдаче, мера её избыточности.
         snippets_found: сколько эталонных подстрок дошло до модели в тексте выдачи.
         snippets_total: сколько эталонных подстрок у вопроса всего.
-        citations: сколько ссылок модель поставила в требуемом промптом формате.
+        citations: сколько ссылок удалось разобрать — понятно, на какой файл и
+            страницу указывает модель, даже если формат записи нарушен.
+        formatted_citations: из них записанные в требуемом промптом формате.
         malformed_citations: ссылки, где файл упомянут, но формат нарушен —
             например «[отчёт.pdf, 10]» без «стр.».
         invented_citations: ссылки на страницы, которых в корпусе нет.
@@ -79,6 +82,7 @@ class CaseMetrics:
     snippets_found: int
     snippets_total: int
     citations: int
+    formatted_citations: int
     malformed_citations: int
     invented_citations: int
     outside_context_citations: int
@@ -133,25 +137,70 @@ def reciprocal_rank(retrieved: Sequence[Page], expected_pages: Sequence[Sequence
 
 
 def find_citations(answer: str) -> List[Page]:
-    """Вытаскивает из ответа ссылки на источники.
+    """Вытаскивает из ответа страницы, на которые сослалась модель.
+
+    Формат здесь не проверяется: важно, куда модель сослалась, а не как записала.
+    Соблюдение формата меряется отдельно.
 
     Аргументы:
         answer: текст ответа модели.
 
     Возвращает:
-        Страницы, на которые модель сослалась, в порядке появления. Несколько ссылок
-        в одних скобках через «;» считаются по отдельности.
+        Страницы в порядке появления. Несколько ссылок в одних скобках через «;»
+        считаются по отдельности.
     """
-    pages = []
-    for reference in split_references(answer):
-        citation = CITATION_PATTERN.fullmatch(reference)
-        if citation:
-            pages.append(Page(
-                document = citation.group("document").strip(),
-                number = int(citation.group("page")),
-            ))
+    pages = [parse_citation(reference) for reference in split_references(answer)]
 
-    return pages
+    return [page for page in pages if page is not None]
+
+
+def parse_citation(reference: str) -> Page | None:
+    """Разбирает одну ссылку на документ и страницу.
+
+    Расширение файла роли не играет: имя документа задаётся корпусом и завтра может
+    быть без «.pdf» вовсе. Отсекается только запись, где на месте документа стоит одно
+    число — «[15, 62]» это перечисление, а не ссылка.
+
+    Аргументы:
+        reference: содержимое скобок, одна ссылка.
+
+    Возвращает:
+        Страницу либо None, если это не ссылка.
+    """
+    citation = READABLE_CITATION_PATTERN.fullmatch(reference)
+
+    if citation is None or not has_letter(citation.group("document")):
+        return None
+
+    return Page(document = citation.group("document").strip(), number = int(citation.group("page")))
+
+
+def has_letter(text: str) -> bool:
+    """Проверяет, есть ли в строке хотя бы одна буква.
+
+    Аргументы:
+        text: строка.
+
+    Возвращает:
+        True, если буква нашлась.
+    """
+    return any(character.isalpha() for character in text)
+
+
+def count_formatted_citations(answer: str) -> int:
+    """Считает ссылки, записанные в формате, который задаёт промпт.
+
+    Аргументы:
+        answer: текст ответа модели.
+
+    Возвращает:
+        Число ссылок вида «[отчёт.pdf, стр. 10]».
+    """
+    return sum(
+        1
+        for reference in split_references(answer)
+        if CITATION_PATTERN.fullmatch(reference) and has_letter(reference)
+    )
 
 
 def split_references(answer: str) -> List[str]:
@@ -172,19 +221,19 @@ def split_references(answer: str) -> List[str]:
 
 
 def count_malformed_citations(answer: str) -> int:
-    """Считает ссылки, в которых упомянут файл, но формат нарушен.
+    """Считает ссылки, которые разобрались, но записаны не по формату.
 
     Аргументы:
         answer: текст ответа модели.
 
     Возвращает:
-        Число ссылок вида «[отчёт.pdf, 10]» — без «стр.» или с иным отклонением
-        от формата, заданного промптом.
+        Число ссылок вида «[отчёт.pdf, 10]» — понятно, куда указывают, но «стр.»
+        пропущено или формат нарушен иначе.
     """
     return sum(
         1
         for reference in split_references(answer)
-        if CITATION_ATTEMPT_MARKER in reference.lower() and not CITATION_PATTERN.fullmatch(reference)
+        if parse_citation(reference) is not None and not CITATION_PATTERN.fullmatch(reference)
     )
 
 
@@ -236,6 +285,7 @@ def measure(
         snippets_found = count_found_snippets(context, case.expected_snippets),
         snippets_total = len(case.expected_snippets),
         citations = len(citations),
+        formatted_citations = count_formatted_citations(answer),
         malformed_citations = count_malformed_citations(answer),
         invented_citations = sum(1 for page in citations if page not in known_pages),
         outside_context_citations = sum(
@@ -298,13 +348,8 @@ def summarize(
     if with_snippets:
         summary["fact_hit_rate"] = collect(with_snippets, unit = "вопросов")
 
-    citations = collect_citations(cases = cases, measurements = measurements)
-    formats = collect_citation_format(cases = cases, measurements = measurements)
-
-    if formats is not None:
-        summary["citation_format"] = formats
-    if citations is not None:
-        summary["citation_honesty"] = citations
+    summary["citation_format"] = collect_citation_format(cases = cases, measurements = measurements)
+    summary["citation_honesty"] = collect_citations(cases = cases, measurements = measurements)
     # Считаем ответы, а не отказы: у всех метрик должно быть «больше — лучше»,
     # иначе список непрошедших вопросов перечисляет как раз прошедшие.
     if answered:
@@ -347,23 +392,26 @@ def collect(scores: Sequence[tuple], unit: str) -> Measure:
 def collect_citations(
     cases: Sequence[Case],
     measurements: Sequence[CaseMetrics],
-) -> Measure | None:
+) -> Measure:
     """Сводит честность ссылок по всем ответам.
 
     Считается по ссылкам, а не по вопросам: важно, какая доля всех проставленных
-    ссылок указывает на существующую страницу, побывавшую в контексте.
+    ссылок указывает на существующую страницу, побывавшую в контексте. Нарушение
+    формата записи здесь не при чём — ссылка на выдуманную страницу остаётся
+    выдуманной, как бы она ни была оформлена.
 
     Аргументы:
         cases: контрольные вопросы.
         measurements: метрики по каждому вопросу.
 
     Возвращает:
-        Метрику либо None, если ссылок не было вовсе.
+        Метрику. При нулевом счёте она остаётся в сводке пустой: метрика, пропадающая
+        из таблицы, ломает сравнение прогонов между собой.
     """
     total = sum(metrics.citations for metrics in measurements)
 
     if not total:
-        return None
+        return empty_measure(unit = "ссылок")
 
     dishonest = sum(
         metrics.invented_citations + metrics.outside_context_citations
@@ -386,24 +434,25 @@ def collect_citations(
 def collect_citation_format(
     cases: Sequence[Case],
     measurements: Sequence[CaseMetrics],
-) -> Measure | None:
+) -> Measure:
     """Сводит долю ссылок, записанных в требуемом промптом формате.
 
-    Без этой метрики модель, которая ссылается неправильно, неотличима от молчащей:
-    неразобранная ссылка просто не попадает в счёт.
+    Меряет дисциплину модели, а не правдивость: ссылка может вести на верную
+    страницу и всё равно нарушать формат. Правдивость меряет citation_honesty.
 
     Аргументы:
         cases: контрольные вопросы.
         measurements: метрики по каждому вопросу.
 
     Возвращает:
-        Метрику либо None, если сослаться никто не пытался.
+        Метрику. При нулевом счёте она остаётся в сводке пустой: метрика, пропадающая
+        из таблицы, ломает сравнение прогонов между собой.
     """
-    correct = sum(metrics.citations for metrics in measurements)
+    correct = sum(metrics.formatted_citations for metrics in measurements)
     malformed = sum(metrics.malformed_citations for metrics in measurements)
 
     if not correct + malformed:
-        return None
+        return empty_measure(unit = "ссылок")
 
     return Measure(
         value = share(correct, correct + malformed),
@@ -454,6 +503,21 @@ def judge_summary(
             summary[name] = collect(scores, unit = "вопросов")
 
     return summary
+
+
+def empty_measure(unit: str) -> Measure:
+    """Создаёт метрику, которую не по чему было считать.
+
+    Строка остаётся в сводке, чтобы таблицы разных прогонов сравнивались построчно.
+    Отличить её от честного нуля можно по нулевому счёту.
+
+    Аргументы:
+        unit: что считалось — вопросы или ссылки.
+
+    Возвращает:
+        Метрику с нулевым счётом.
+    """
+    return Measure(value = 0.0, scored = 0, total = 0, unit = unit, failed = [])
 
 
 def share(value: float, total: int) -> float:

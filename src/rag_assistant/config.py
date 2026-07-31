@@ -9,6 +9,9 @@ load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# Написания, которыми в .env включают настройку-переключатель.
+TRUE_VALUES = ("1", "true", "yes", "on")
+
 
 @dataclass(frozen = True)
 class AppConfig:
@@ -45,6 +48,7 @@ class AppConfig:
         candidate_top_k: сколько фрагментов забирает поиск до реранкера. Реранкер
             переставляет только то, что ему принесли, поэтому кандидатов берётся
             больше, чем нужно в ответе. Без реранкера значение не используется.
+        hybrid_search: True — искать векторно и по словам сразу, объединяя выдачи.
     """
 
     llm_base_url: str
@@ -71,6 +75,7 @@ class AppConfig:
     chunk_overlap: int
     top_k: int
     candidate_top_k: int
+    hybrid_search: bool
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -118,4 +123,5 @@ class AppConfig:
             chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200")),
             top_k = int(os.getenv("TOP_K", "5")),
             candidate_top_k = int(os.getenv("CANDIDATE_TOP_K", "20")),
+            hybrid_search = os.getenv("HYBRID_SEARCH", "false").strip().lower() in TRUE_VALUES,
         )

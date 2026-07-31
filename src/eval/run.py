@@ -6,8 +6,9 @@
     uv run python -m eval.run full --judge — то же плюс оценка ответов моделью.
 
 Флаг --filters ограничивает поиск разметкой документов из поля tags у вопроса,
-флаг --rerank переставляет найденное cross-encoder. Прогон с флагом и без него
-под разными именами (--name) и даёт сравнение.
+--rerank переставляет найденное cross-encoder, --hybrid добавляет к векторному
+поиску лексический. Прогон с флагом и без него под разными именами (--name)
+и даёт сравнение.
 
 Режим retrieval быстрый, потому что модель не вызывается: на нём и подбираются настройки
 поиска. Полный прогон нужен для отчёта и для метрик, которые считаются по тексту ответа.
@@ -39,6 +40,7 @@ from rag_assistant.engine import (
 from rag_assistant.index import find_collection, open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
+from rag_assistant.lexical import LexicalIndex, create_lexical_index
 from rag_assistant.metadata_filters import build_filters
 from rag_assistant.models import configure_global_settings, create_llm, create_reranker
 
@@ -72,6 +74,7 @@ def retrieve_sources(
     question: str,
     filters: MetadataFilters | None,
     reranker: SentenceTransformerRerank | None,
+    lexical_index: LexicalIndex | None,
 ) -> List[Source]:
     """Возвращает фрагменты по вопросу, не обращаясь к модели.
 
@@ -81,6 +84,7 @@ def retrieve_sources(
         question: вопрос.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+        lexical_index: индекс поиска по словам либо None — искать только векторно.
 
     Возвращает:
         Фрагменты в том порядке, в котором их увидела бы модель.
@@ -90,6 +94,7 @@ def retrieve_sources(
         config = config,
         filters = filters,
         top_k = retrieval_top_k(config = config, reranker = reranker),
+        lexical_index = lexical_index,
     )
     nodes = retriever.retrieve(question)
 
@@ -108,6 +113,7 @@ def run_case(
     known_pages: Set[Page],
     filters: MetadataFilters | None,
     reranker: SentenceTransformerRerank | None,
+    lexical_index: LexicalIndex | None,
     with_answer: bool,
     judge: LLM | None,
 ) -> CaseRun:
@@ -120,6 +126,7 @@ def run_case(
         known_pages: все страницы, лежащие в индексе.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+        lexical_index: индекс поиска по словам либо None — искать только векторно.
         with_answer: True — спросить модель, False — снять только выдачу поиска.
         judge: модель-судья либо None, если оценка не нужна.
 
@@ -134,6 +141,7 @@ def run_case(
             config = config,
             filters = filters,
             reranker = reranker,
+            lexical_index = lexical_index,
         )
         response = engine.ask(case.question)
         sources = response.sources
@@ -145,6 +153,7 @@ def run_case(
             question = case.question,
             filters = filters,
             reranker = reranker,
+            lexical_index = lexical_index,
         )
         answer = ""
 
@@ -203,6 +212,11 @@ def parse_arguments() -> argparse.Namespace:
         action = "store_true",
         help = "переставлять найденные фрагменты cross-encoder из RERANK_MODEL",
     )
+    parser.add_argument(
+        "--hybrid",
+        action = "store_true",
+        help = "искать векторно и по словам сразу, объединяя выдачи",
+    )
     parser.add_argument("--name", default = "baseline", help = "имя снимка в docs/eval")
 
     arguments = parser.parse_args()
@@ -237,6 +251,7 @@ def main() -> None:
     known_pages = load_known_pages(config)
     judge = create_llm(config = config, model = config.judge_model) if arguments.judge else None
     reranker = create_reranker(config) if arguments.rerank else None
+    lexical_index = create_lexical_index(index) if arguments.hybrid else None
 
     runs = []
     for case in cases:
@@ -249,6 +264,7 @@ def main() -> None:
                 known_pages = known_pages,
                 filters = build_filters(case.tags) if arguments.filters else None,
                 reranker = reranker,
+                lexical_index = lexical_index,
                 with_answer = arguments.mode == "full",
                 judge = judge,
             )
