@@ -1,6 +1,7 @@
 """Вывод результатов прогона: таблица в терминал, отчёт в markdown и json."""
 import json
 from dataclasses import asdict
+from hashlib import sha1
 from pathlib import Path
 from typing import Dict, List
 
@@ -9,6 +10,7 @@ from eval.judge import Verdict, correctness, faithfulness
 from eval.metrics import Measure
 from eval.results import CaseRun, to_pages
 from rag_assistant.config import PROJECT_ROOT, AppConfig
+from rag_assistant.prompts import QA_TEMPLATE_TEXT
 
 REPORTS_DIR = PROJECT_ROOT / "docs" / "eval"
 
@@ -294,12 +296,18 @@ def describe_settings(config: AppConfig, runs: List[CaseRun]) -> dict:
     Возвращает:
         Настройки прогона.
     """
+    questions = "\n".join(run.case.question for run in runs)
     settings = {
         "llm_model": config.llm_model,
         "embedding_model": config.embedding_model,
         "chunk_size": config.chunk_size,
         "chunk_overlap": config.chunk_overlap,
         "top_k": config.top_k,
+        # Отпечаток набора вопросов: сменили формулировки — снимок несравним с прежним,
+        # хотя все остальные настройки те же.
+        "questions": f"{len(runs)} шт., {sha1(questions.encode()).hexdigest()[:8]}",
+        # Промпт — тоже часть проверяемой системы: поменяли правила, снимок несравним.
+        "prompt": sha1(QA_TEMPLATE_TEXT.encode()).hexdigest()[:8],
     }
 
     if any(run.verdict is not None for run in runs):

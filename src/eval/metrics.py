@@ -10,8 +10,12 @@ from typing import Dict, List, Sequence, Set
 from eval.cases import Case, Page
 from eval.judge import Verdict, correctness, faithfulness
 
-# Ссылка на источник в ответе: «[файл.pdf, стр. 8]».
-CITATION_PATTERN = re.compile(r"\[([^\[\]]+?),\s*стр\.\s*(\d+)\]")
+# Содержимое квадратных скобок в ответе: там лежат одна или несколько ссылок.
+CITATION_BLOCK_PATTERN = re.compile(r"\[([^\[\]]+?)\]")
+
+# Одна ссылка: «файл.pdf, стр. 8». Модель складывает несколько в одни скобки через «;»,
+# поэтому разбирать надо каждую ссылку, а не содержимое скобок целиком.
+CITATION_PATTERN = re.compile(r"\s*(?P<document>[^;]+?),\s*стр\.\s*(?P<page>\d+)\s*")
 
 REFUSAL_MARKER = "не знаю"
 
@@ -127,12 +131,20 @@ def find_citations(answer: str) -> List[Page]:
         answer: текст ответа модели.
 
     Возвращает:
-        Страницы, на которые модель сослалась, в порядке появления.
+        Страницы, на которые модель сослалась, в порядке появления. Несколько ссылок
+        в одних скобках через «;» считаются по отдельности.
     """
-    return [
-        Page(document = document.strip(), number = int(number))
-        for document, number in CITATION_PATTERN.findall(answer)
-    ]
+    pages = []
+    for block in CITATION_BLOCK_PATTERN.findall(answer):
+        for reference in block.split(";"):
+            citation = CITATION_PATTERN.fullmatch(reference)
+            if citation:
+                pages.append(Page(
+                    document = citation.group("document").strip(),
+                    number = int(citation.group("page")),
+                ))
+
+    return pages
 
 
 def count_found_snippets(context: str, snippets: Sequence[str]) -> int:

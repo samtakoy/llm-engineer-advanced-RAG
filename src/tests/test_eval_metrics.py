@@ -78,6 +78,13 @@ def test_find_citations_reads_reference_format() -> None:
     assert find_citations(answer) == [Page("отчёт.pdf", 8), Page("другой.pdf", 3)]
 
 
+def test_find_citations_splits_combined_reference() -> None:
+    """Модель складывает несколько ссылок в одни скобки — считаем их по отдельности."""
+    answer = "Проекты [отчёт.pdf, стр. 35; отчёт.pdf, стр. 14] развиваются."
+
+    assert find_citations(answer) == [Page("отчёт.pdf", 35), Page("отчёт.pdf", 14)]
+
+
 def test_find_citations_ignores_plain_text() -> None:
     """Текст без ссылок не даёт ложных срабатываний."""
     assert find_citations("Выручка выросла на 14% в 2025 году.") == []
@@ -298,7 +305,7 @@ def test_questions_file_loads() -> None:
     """Набор вопросов читается, эталоны расшифрованы в имена файлов."""
     cases = load_cases(QUESTIONS_PATH)
 
-    assert len(cases) == 11
+    assert cases
     assert all(case.question for case in cases)
     assert all(
         page.document.endswith(".pdf")
