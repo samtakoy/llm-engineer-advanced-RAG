@@ -39,6 +39,8 @@ class Case:
         expected_snippets: дословные куски, которые обязаны оказаться в тексте выдачи.
             Страница может найтись, а нужный её фрагмент — нет.
         expected_refusal: True — правильный ответ «Я не знаю».
+        tags: разметка документов, которой ограничивается поиск, вида "year:2024".
+            Пусто — вопрос требует всего корпуса, фильтровать нечем.
         checks: что вопрос проверяет, для отчёта.
         distractor: чем вопрос сбивает систему, для отчёта.
     """
@@ -50,6 +52,7 @@ class Case:
     expected_pages: List[List[Page]]
     expected_snippets: List[str]
     expected_refusal: bool
+    tags: List[str]
     checks: str
     distractor: str
 
@@ -96,6 +99,7 @@ def load_cases(path: Path) -> List[Case]:
             ],
             expected_snippets = case["expected_snippets"],
             expected_refusal = case.get("expected_refusal", False),
+            tags = case.get("tags", []),
             checks = case["checks"],
             distractor = case["distractor"],
         )

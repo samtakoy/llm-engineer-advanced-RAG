@@ -10,11 +10,21 @@ from rag_assistant.config import AppConfig
 from rag_assistant.ingest.filters import drop_service_pages
 from rag_assistant.ingest.normalize import normalize_page
 
+# Разметка документов для фильтрации по метаданным. Ведётся руками: имена файлов
+# у отчётов разных лет устроены по-разному, а ошибка разметки молча сузила бы поиск.
+# Файла нет в словаре — документ индексируется без полей фильтрации.
+DOCUMENT_METADATA = {
+    "FY2024_Issuer's report.pdf": {"year": "2024"},
+    "Отчет эмитента МКПАО ЮМГ 12м2025.pdf": {"year": "2025"},
+}
+
 # Путь к файлу нужен только при отладке: ни в ссылке, ни в ответе он не участвует.
 # Номер страницы модель видеть должна — по нему она проставляет ссылку, — но в вектор
 # он попадать не должен: у всех узлов это одинаковое по форме поле со случайным для
 # смысла числом, то есть шум.
-EXCLUDED_FROM_EMBEDDING = ("file_path", "page_label")
+# Поля фильтрации в вектор не идут тем более: год отчёта в тексте чанка сбивал бы поиск
+# по годам, которые отчёт тоже описывает — сравнительные колонки за прошлый период.
+EXCLUDED_FROM_EMBEDDING = ("file_path", "page_label", "year")
 EXCLUDED_FROM_PROMPT = ("file_path",)
 
 
@@ -48,7 +58,8 @@ def read_pdf(pdf_path: Path) -> List[Document]:
         pdf_path: путь к файлу.
 
     Возвращает:
-        Страницы файла в markdown с метаданными.
+        Страницы файла в markdown с метаданными: ссылка на источник плюс поля
+        разметки документа, по которым отбирает фильтр поиска.
     """
     # Отчеты содержат текстовый слой, распознавание не нужно. По умолчанию pymupdf4llm
     # включает его для страниц, которые счел картинками, причем с английской моделью
@@ -68,6 +79,7 @@ def read_pdf(pdf_path: Path) -> List[Document]:
                 "file_name": pdf_path.name,
                 "file_path": str(pdf_path),
                 "page_label": str(page["metadata"]["page_number"]),
+                **DOCUMENT_METADATA.get(pdf_path.name, {}),
             },
         )
         for page in pages

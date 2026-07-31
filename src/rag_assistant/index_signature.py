@@ -9,6 +9,7 @@ from typing import Dict
 from chromadb.api.models.Collection import Collection
 
 from rag_assistant.config import AppConfig
+from rag_assistant.ingest.loader import DOCUMENT_METADATA
 
 
 class IndexSettingsChanged(RuntimeError):
@@ -29,7 +30,23 @@ def build_signature(config: AppConfig) -> Dict[str, str]:
         "chunk_size": str(config.chunk_size),
         "parent_chunk_size": str(config.parent_chunk_size),
         "chunk_overlap": str(config.chunk_overlap),
+        "document_metadata": format_document_metadata(),
     }
+
+
+def format_document_metadata() -> str:
+    """Собирает разметку документов в строку для подписи.
+
+    Метаданные лежат в Chroma рядом с векторами: правка разметки без пересборки
+    оставила бы фильтр работать по прежним значениям.
+
+    Возвращает:
+        Разметку вида «файл.pdf: year=2024; …».
+    """
+    return "; ".join(
+        f"{file_name}: " + ", ".join(f"{key}={value}" for key, value in sorted(fields.items()))
+        for file_name, fields in sorted(DOCUMENT_METADATA.items())
+    )
 
 
 def verify_signature(collection: Collection, config: AppConfig) -> None:

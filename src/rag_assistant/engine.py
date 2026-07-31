@@ -6,6 +6,7 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import AutoMergingRetriever
 from llama_index.core.schema import NodeWithScore
+from llama_index.core.vector_stores import MetadataFilters
 
 from rag_assistant.config import AppConfig
 from rag_assistant.prompts import QA_TEMPLATE
@@ -43,7 +44,11 @@ class Answer:
     sources: List[Source]
 
 
-def create_retriever(index: VectorStoreIndex, config: AppConfig) -> AutoMergingRetriever:
+def create_retriever(
+    index: VectorStoreIndex,
+    config: AppConfig,
+    filters: MetadataFilters | None,
+) -> AutoMergingRetriever:
     """Создаёт поиск, склеивающий найденные мелкие фрагменты в крупные.
 
     Ищет по листьям, потому что векторизованы только они. Если в выдачу попало
@@ -53,12 +58,15 @@ def create_retriever(index: VectorStoreIndex, config: AppConfig) -> AutoMergingR
     Аргументы:
         index: векторный индекс документов вместе с докстором.
         config: конфигурация приложения.
+        filters: отбор документов по метаданным либо None — искать по всему корпусу.
+            Отбор идёт до поиска соседей, поэтому top_k набирается уже внутри
+            отобранных документов.
 
     Возвращает:
         Поиск, готовый отдавать фрагменты по вопросу.
     """
     return AutoMergingRetriever(
-        vector_retriever = index.as_retriever(similarity_top_k = config.top_k),
+        vector_retriever = index.as_retriever(similarity_top_k = config.top_k, filters = filters),
         storage_context = index.storage_context,
         verbose = False,
     )
@@ -67,15 +75,21 @@ def create_retriever(index: VectorStoreIndex, config: AppConfig) -> AutoMergingR
 class RagEngine:
     """Отвечает на вопросы по проиндексированным документам."""
 
-    def __init__(self, index: VectorStoreIndex, config: AppConfig) -> None:
+    def __init__(
+        self,
+        index: VectorStoreIndex,
+        config: AppConfig,
+        filters: MetadataFilters | None,
+    ) -> None:
         """Создаёт движок запросов поверх индекса.
 
         Аргументы:
             index: векторный индекс документов.
             config: конфигурация приложения.
+            filters: отбор документов по метаданным либо None — искать по всему корпусу.
         """
         self.query_engine = RetrieverQueryEngine.from_args(
-            retriever = create_retriever(index = index, config = config),
+            retriever = create_retriever(index = index, config = config, filters = filters),
             text_qa_template = QA_TEMPLATE,
         )
 

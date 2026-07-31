@@ -5,6 +5,9 @@
     uv run python -m eval.run full         — поиск, ответы и разбор ссылок;
     uv run python -m eval.run full --judge — то же плюс оценка ответов моделью.
 
+Флаг --filters ограничивает поиск разметкой документов из поля tags у вопроса.
+Прогон с ним и без него под разными именами (--name) и даёт сравнение.
+
 Режим retrieval быстрый, потому что модель не вызывается: на нём и подбираются настройки
 поиска. Полный прогон нужен для отчёта и для метрик, которые считаются по тексту ответа.
 """
@@ -16,6 +19,7 @@ from typing import List, Set
 import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.llms import LLM
+from llama_index.core.vector_stores import MetadataFilters
 
 from eval.cases import QUESTIONS_PATH, Case, Page, load_cases
 from eval.judge import judge_answer
@@ -27,6 +31,7 @@ from rag_assistant.engine import RagEngine, Source, create_retriever, to_source
 from rag_assistant.index import find_collection, open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
+from rag_assistant.metadata_filters import build_filters
 from rag_assistant.models import configure_global_settings, create_llm
 
 
@@ -53,18 +58,24 @@ def load_known_pages(config: AppConfig) -> Set[Page]:
     }
 
 
-def retrieve_sources(index: VectorStoreIndex, config: AppConfig, question: str) -> List[Source]:
+def retrieve_sources(
+    index: VectorStoreIndex,
+    config: AppConfig,
+    question: str,
+    filters: MetadataFilters | None,
+) -> List[Source]:
     """Возвращает фрагменты по вопросу, не обращаясь к модели.
 
     Аргументы:
         index: векторный индекс документов.
         config: конфигурация приложения.
         question: вопрос.
+        filters: отбор документов по метаданным либо None — искать по всему корпусу.
 
     Возвращает:
         Фрагменты в порядке выдачи поиска.
     """
-    retriever = create_retriever(index = index, config = config)
+    retriever = create_retriever(index = index, config = config, filters = filters)
 
     return [to_source(node) for node in retriever.retrieve(question)]
 
@@ -74,7 +85,8 @@ def run_case(
     index: VectorStoreIndex,
     config: AppConfig,
     known_pages: Set[Page],
-    engine: RagEngine | None,
+    filters: MetadataFilters | None,
+    with_answer: bool,
     judge: LLM | None,
 ) -> CaseRun:
     """Прогоняет один вопрос.
@@ -84,19 +96,27 @@ def run_case(
         index: векторный индекс документов.
         config: конфигурация приложения.
         known_pages: все страницы, лежащие в индексе.
-        engine: движок вопрос-ответ либо None, если ответы не нужны.
+        filters: отбор документов по метаданным либо None — искать по всему корпусу.
+        with_answer: True — спросить модель, False — снять только выдачу поиска.
         judge: модель-судья либо None, если оценка не нужна.
 
     Возвращает:
         Результат прогона вопроса.
     """
-    if engine is None:
-        sources = retrieve_sources(index = index, config = config, question = case.question)
-        answer = ""
-    else:
-        response = engine.ask(case.question)
+    if with_answer:
+        # Движок собирается на вопрос, потому что фильтр у каждого вопроса свой.
+        # Сборка — только обёртки над открытым индексом, без обращений к диску и сети.
+        response = RagEngine(index = index, config = config, filters = filters).ask(case.question)
         sources = response.sources
         answer = response.text
+    else:
+        sources = retrieve_sources(
+            index = index,
+            config = config,
+            question = case.question,
+            filters = filters,
+        )
+        answer = ""
 
     metrics = measure(
         case = case,
@@ -143,6 +163,11 @@ def parse_arguments() -> argparse.Namespace:
         help = "retrieval — только поиск (по умолчанию), full — с ответами модели",
     )
     parser.add_argument("--judge", action = "store_true", help = "оценить ответы моделью")
+    parser.add_argument(
+        "--filters",
+        action = "store_true",
+        help = "ограничивать поиск разметкой документов из поля tags у вопроса",
+    )
     parser.add_argument("--name", default = "baseline", help = "имя снимка в docs/eval")
 
     arguments = parser.parse_args()
@@ -175,7 +200,6 @@ def main() -> None:
 
     cases = load_cases(QUESTIONS_PATH)
     known_pages = load_known_pages(config)
-    engine = RagEngine(index = index, config = config) if arguments.mode == "full" else None
     judge = create_llm(config = config, model = config.judge_model) if arguments.judge else None
 
     runs = []
@@ -187,7 +211,8 @@ def main() -> None:
                 index = index,
                 config = config,
                 known_pages = known_pages,
-                engine = engine,
+                filters = build_filters(case.tags) if arguments.filters else None,
+                with_answer = arguments.mode == "full",
                 judge = judge,
             )
         )

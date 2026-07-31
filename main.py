@@ -5,6 +5,9 @@
     uv run main.py reindex      — перестроить индекс с нуля и выйти;
     uv run main.py ask "вопрос" — один вопрос в терминале;
     uv run main.py parse        — выгрузить нарезку в parsed/ для просмотра.
+
+Поиск можно ограничить разметкой документов:
+    uv run main.py ask "вопрос" --tag "year:2025"
 """
 import argparse
 import sys
@@ -18,6 +21,7 @@ from rag_assistant.engine import RagEngine
 from rag_assistant.index import open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
+from rag_assistant.metadata_filters import TagFormatError, build_filters, parse_tags
 from rag_assistant.models import configure_global_settings, create_node_parser
 from rag_assistant.ui import build_app
 
@@ -58,6 +62,13 @@ def parse_arguments() -> argparse.Namespace:
                "parse — выгрузить нарезку в parsed/",
     )
     parser.add_argument("question", nargs = "?", default = None, help = "вопрос для команды ask")
+    parser.add_argument(
+        "--tag",
+        default = None,
+        help = 'фильтр по метаданным документов: "year:2024" — один отчёт, '
+               '"year:2024|year:2025" — любой из двух. Разные поля сужают выдачу '
+               'каждое своим условием',
+    )
 
     arguments = parser.parse_args()
 
@@ -88,8 +99,9 @@ def main() -> None:
         return
 
     try:
+        filters = build_filters(parse_tags(arguments.tag))
         index = prepare_index(config = config, rebuild = arguments.command == "reindex")
-    except IndexSettingsChanged as mismatch:
+    except (TagFormatError, IndexSettingsChanged) as mismatch:
         # Ожидаемая ситуация, а не сбой: показываем причину без стека вызовов.
         print(mismatch, file = sys.stderr)
         raise SystemExit(1)
@@ -98,7 +110,7 @@ def main() -> None:
     if arguments.command == "reindex":
         return
 
-    engine = RagEngine(index = index, config = config)
+    engine = RagEngine(index = index, config = config, filters = filters)
 
     if arguments.command == "ask":
         answer = engine.ask(arguments.question)
