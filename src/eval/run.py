@@ -75,6 +75,7 @@ def retrieve_sources(
     filters: MetadataFilters | None,
     reranker: SentenceTransformerRerank | None,
     lexical_index: LexicalIndex | None,
+    mmr_threshold: float | None,
 ) -> List[Source]:
     """Возвращает фрагменты по вопросу, не обращаясь к модели.
 
@@ -85,6 +86,7 @@ def retrieve_sources(
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
         lexical_index: индекс поиска по словам либо None — искать только векторно.
+        mmr_threshold: вес близости против разнообразия либо None — только близость.
 
     Возвращает:
         Фрагменты в том порядке, в котором их увидела бы модель.
@@ -95,6 +97,7 @@ def retrieve_sources(
         filters = filters,
         top_k = retrieval_top_k(config = config, reranker = reranker),
         lexical_index = lexical_index,
+        mmr_threshold = mmr_threshold,
     )
     nodes = retriever.retrieve(question)
 
@@ -114,6 +117,7 @@ def run_case(
     filters: MetadataFilters | None,
     reranker: SentenceTransformerRerank | None,
     lexical_index: LexicalIndex | None,
+    mmr_threshold: float | None,
     with_answer: bool,
     judge: LLM | None,
 ) -> CaseRun:
@@ -127,6 +131,7 @@ def run_case(
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
         lexical_index: индекс поиска по словам либо None — искать только векторно.
+        mmr_threshold: вес близости против разнообразия либо None — только близость.
         with_answer: True — спросить модель, False — снять только выдачу поиска.
         judge: модель-судья либо None, если оценка не нужна.
 
@@ -142,6 +147,7 @@ def run_case(
             filters = filters,
             reranker = reranker,
             lexical_index = lexical_index,
+            mmr_threshold = mmr_threshold,
         )
         response = engine.ask(case.question)
         sources = response.sources
@@ -154,6 +160,7 @@ def run_case(
             filters = filters,
             reranker = reranker,
             lexical_index = lexical_index,
+            mmr_threshold = mmr_threshold,
         )
         answer = ""
 
@@ -213,6 +220,11 @@ def parse_arguments() -> argparse.Namespace:
         help = "переставлять найденные фрагменты cross-encoder из RERANK_MODEL",
     )
     parser.add_argument(
+        "--mmr",
+        action = "store_true",
+        help = "разбавлять выдачу непохожими фрагментами, вес из MMR_THRESHOLD",
+    )
+    parser.add_argument(
         "--hybrid",
         action = "store_true",
         help = "искать векторно и по словам сразу, объединяя выдачи",
@@ -265,6 +277,7 @@ def main() -> None:
                 filters = build_filters(case.tags) if arguments.filters else None,
                 reranker = reranker,
                 lexical_index = lexical_index,
+                mmr_threshold = config.mmr_threshold if arguments.mmr else None,
                 with_answer = arguments.mode == "full",
                 judge = judge,
             )

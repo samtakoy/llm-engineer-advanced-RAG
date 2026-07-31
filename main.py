@@ -117,6 +117,7 @@ def main() -> None:
         filters = filters,
         reranker = create_reranker(config),
         lexical_index = create_lexical_index(index) if config.hybrid_search else None,
+        mmr_threshold = config.mmr_threshold,
     )
 
     if arguments.command == "ask":

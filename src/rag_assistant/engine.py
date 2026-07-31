@@ -9,6 +9,7 @@ from llama_index.core.retrievers import AutoMergingRetriever, BaseRetriever, Que
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.core.schema import NodeWithScore
 from llama_index.core.vector_stores import MetadataFilters
+from llama_index.core.vector_stores.types import VectorStoreQueryMode
 
 from rag_assistant.config import AppConfig
 from rag_assistant.lexical import LexicalIndex, LexicalRetriever
@@ -61,12 +62,44 @@ def retrieval_top_k(config: AppConfig, reranker: SentenceTransformerRerank | Non
     return config.candidate_top_k if reranker is not None else config.top_k
 
 
+def create_vector_retriever(
+    index: VectorStoreIndex,
+    filters: MetadataFilters | None,
+    top_k: int,
+    mmr_threshold: float | None,
+) -> BaseRetriever:
+    """Создаёт поиск по близости векторов.
+
+    Аргументы:
+        index: векторный индекс документов.
+        filters: отбор документов по метаданным либо None — искать по всему корпусу.
+        top_k: сколько фрагментов забирает поиск.
+        mmr_threshold: доля веса, отданная близости к вопросу, остальное уходит
+            непохожести фрагментов друг на друга. None — отбирать только по близости.
+
+    Возвращает:
+        Поиск по векторам.
+    """
+    if mmr_threshold is None:
+        return index.as_retriever(similarity_top_k = top_k, filters = filters)
+
+    # Разнообразие считается по векторам, поэтому режим задаётся самому хранилищу:
+    # оно достаёт кандидатов с запасом и отбирает из них непохожие друг на друга.
+    return index.as_retriever(
+        similarity_top_k = top_k,
+        filters = filters,
+        vector_store_query_mode = VectorStoreQueryMode.MMR,
+        vector_store_kwargs = {"mmr_threshold": mmr_threshold},
+    )
+
+
 def create_retriever(
     index: VectorStoreIndex,
     config: AppConfig,
     filters: MetadataFilters | None,
     top_k: int,
     lexical_index: LexicalIndex | None,
+    mmr_threshold: float | None,
 ) -> AutoMergingRetriever:
     """Создаёт поиск, склеивающий найденные мелкие фрагменты в крупные.
 
@@ -82,11 +115,18 @@ def create_retriever(
             отобранных документов.
         top_k: сколько фрагментов забирает поиск.
         lexical_index: индекс поиска по словам либо None — искать только векторно.
+        mmr_threshold: доля веса, отданная близости к вопросу, остальное уходит
+            непохожести фрагментов друг на друга. None — отбирать только по близости.
 
     Возвращает:
         Поиск, готовый отдавать фрагменты по вопросу.
     """
-    vector_retriever = index.as_retriever(similarity_top_k = top_k, filters = filters)
+    vector_retriever = create_vector_retriever(
+        index = index,
+        filters = filters,
+        top_k = top_k,
+        mmr_threshold = mmr_threshold,
+    )
     found: BaseRetriever = vector_retriever
 
     if lexical_index is not None:
@@ -129,6 +169,7 @@ class RagEngine:
         filters: MetadataFilters | None,
         reranker: SentenceTransformerRerank | None,
         lexical_index: LexicalIndex | None,
+        mmr_threshold: float | None,
     ) -> None:
         """Создаёт движок запросов поверх индекса.
 
@@ -138,6 +179,8 @@ class RagEngine:
             filters: отбор документов по метаданным либо None — искать по всему корпусу.
             reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
             lexical_index: индекс поиска по словам либо None — искать только векторно.
+            mmr_threshold: доля веса, отданная близости к вопросу; остальное уходит
+                непохожести фрагментов. None — отбирать только по близости.
         """
         self.query_engine = RetrieverQueryEngine.from_args(
             retriever = create_retriever(
@@ -146,6 +189,7 @@ class RagEngine:
                 filters = filters,
                 top_k = retrieval_top_k(config = config, reranker = reranker),
                 lexical_index = lexical_index,
+                mmr_threshold = mmr_threshold,
             ),
             text_qa_template = QA_TEMPLATE,
             node_postprocessors = [reranker] if reranker is not None else [],

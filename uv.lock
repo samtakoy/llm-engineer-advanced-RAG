@@ -2278,7 +2278,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bm25s", specifier = ">=0.3.10" },
+    { name = "bm25s", specifier = "==0.3.10" },
     { name = "chromadb", specifier = "==1.5.9" },
     { name = "gradio", specifier = "==6.20.0" },
     { name = "llama-index-core", specifier = "==0.14.23" },
@@ -2286,7 +2286,7 @@ requires-dist = [
     { name = "llama-index-llms-openai-like", specifier = "==0.7.2" },
     { name = "llama-index-vector-stores-chroma", specifier = "==0.5.5" },
     { name = "pymupdf4llm", specifier = "==1.28.0" },
-    { name = "pystemmer", specifier = ">=2.2.0.3" },
+    { name = "pystemmer", specifier = "==2.2.0.3" },
     { name = "python-dotenv", specifier = "==1.2.2" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "sentence-transformers", specifier = "==5.6.0" },

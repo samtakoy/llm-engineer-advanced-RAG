@@ -13,6 +13,22 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TRUE_VALUES = ("1", "true", "yes", "on")
 
 
+def read_optional_float(value: str | None) -> float | None:
+    """Читает необязательную дробную настройку.
+
+    Аргументы:
+        value: значение переменной окружения либо None, если она не задана.
+
+    Возвращает:
+        Число либо None, если настройка пуста: пустая строка означает «выключено»,
+        а не ноль, который у долей был бы осмысленным значением.
+    """
+    if value is None or not value.strip():
+        return None
+
+    return float(value)
+
+
 @dataclass(frozen = True)
 class AppConfig:
     """Настройки пайплайна.
@@ -49,6 +65,9 @@ class AppConfig:
             переставляет только то, что ему принесли, поэтому кандидатов берётся
             больше, чем нужно в ответе. Без реранкера значение не используется.
         hybrid_search: True — искать векторно и по словам сразу, объединяя выдачи.
+        mmr_threshold: насколько выдача жертвует точностью ради разнообразия:
+            единица — обычный поиск по близости, ноль — отбор максимально непохожих
+            друг на друга фрагментов. None — разнообразие не учитывается.
     """
 
     llm_base_url: str
@@ -76,6 +95,7 @@ class AppConfig:
     top_k: int
     candidate_top_k: int
     hybrid_search: bool
+    mmr_threshold: float | None
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -124,4 +144,5 @@ class AppConfig:
             top_k = int(os.getenv("TOP_K", "5")),
             candidate_top_k = int(os.getenv("CANDIDATE_TOP_K", "20")),
             hybrid_search = os.getenv("HYBRID_SEARCH", "false").strip().lower() in TRUE_VALUES,
+            mmr_threshold = read_optional_float(os.getenv("MMR_THRESHOLD")),
         )
