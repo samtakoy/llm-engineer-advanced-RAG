@@ -63,13 +63,15 @@ class AppConfig:
         Возвращает:
             AppConfig со значениями по умолчанию там, где переменная не задана.
         """
-        local_model = os.getenv("LOCAL_MODEL", "google/gemma-4-26b-a4b-qat")
+
+        local_model = os.getenv("LOCAL_MODEL", "google/gemma-4-e2b")
+        # local_model = os.getenv("LOCAL_MODEL", "google/gemma-4-26b-a4b-qat")
 
         return cls(
             llm_base_url = os.getenv("LOCAL_BASE_URL", "http://localhost:1234/v1"),
             llm_api_key = os.getenv("LOCAL_API_KEY", "lm-studio"),
             llm_model = local_model,
-            judge_model = os.getenv("JUDGE_MODEL") or local_model,
+            judge_model = os.getenv("JUDGE_MODEL", "google/gemma-4-26b-a4b-qat") or local_model,
             llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.1")),
             llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "4096")),
             llm_context_window = int(os.getenv("LLM_CONTEXT_WINDOW", "32768")),

@@ -33,7 +33,8 @@ def print_table(runs: List[CaseRun]) -> None:
         else:
             hit = "да" if metrics.page_hit else f"{metrics.covered_groups}/{metrics.total_groups}"
         bad = metrics.invented_citations + metrics.outside_context_citations
-        citations = f"{metrics.citations - bad}/{metrics.citations}" if metrics.citations else "—"
+        total_citations = metrics.citations + metrics.malformed_citations
+        citations = f"{metrics.citations - bad}/{total_citations}" if total_citations else "—"
         facts = f"{metrics.snippets_found}/{metrics.snippets_total}" if metrics.snippets_total else "—"
         print(
             f"{run.case.number:>2}  {run.case.kind:<13} {hit:<5} {facts:<6} "
@@ -233,7 +234,8 @@ def render_case(run: CaseRun) -> List[str]:
             run.answer,
             "```",
             "",
-            f"- ссылок: {metrics.citations}, выдуманных: {metrics.invented_citations}, "
+            f"- ссылок в формате: {metrics.citations}, с нарушением формата: "
+            f"{metrics.malformed_citations}, выдуманных: {metrics.invented_citations}, "
             f"вне контекста: {metrics.outside_context_citations}",
         ])
     if run.verdict is not None:

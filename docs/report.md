@@ -84,3 +84,5 @@ parsed
 
 Снимок базового RAG с метриками и настройками, при которых снят:
 [docs/eval/baseline.md](eval/baseline.md).
+
+Для более слабой модели (google/gemma-4-e2b): TODO ссылка

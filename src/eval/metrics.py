@@ -17,6 +17,11 @@ CITATION_BLOCK_PATTERN = re.compile(r"\[([^\[\]]+?)\]")
 # поэтому разбирать надо каждую ссылку, а не содержимое скобок целиком.
 CITATION_PATTERN = re.compile(r"\s*(?P<document>[^;]+?),\s*стр\.\s*(?P<page>\d+)\s*")
 
+# Попытка сослаться: в скобках упомянут файл. Слабые модели пишут «[отчёт.pdf, 10]»,
+# без «стр.». Без этого счётчика такая ссылка неотличима от её отсутствия, и модель,
+# нарушающая формат, выглядит просто молчаливой.
+CITATION_ATTEMPT_MARKER = ".pdf"
+
 REFUSAL_MARKER = "не знаю"
 
 
@@ -56,7 +61,9 @@ class CaseMetrics:
         unique_pages: сколько разных страниц в выдаче, мера её избыточности.
         snippets_found: сколько эталонных подстрок дошло до модели в тексте выдачи.
         snippets_total: сколько эталонных подстрок у вопроса всего.
-        citations: сколько ссылок модель поставила в ответе.
+        citations: сколько ссылок модель поставила в требуемом промптом формате.
+        malformed_citations: ссылки, где файл упомянут, но формат нарушен —
+            например «[отчёт.pdf, 10]» без «стр.».
         invented_citations: ссылки на страницы, которых в корпусе нет.
         outside_context_citations: ссылки на существующие страницы, которых не было
             в переданном модели контексте.
@@ -72,6 +79,7 @@ class CaseMetrics:
     snippets_found: int
     snippets_total: int
     citations: int
+    malformed_citations: int
     invented_citations: int
     outside_context_citations: int
     refused: bool | None
@@ -135,16 +143,49 @@ def find_citations(answer: str) -> List[Page]:
         в одних скобках через «;» считаются по отдельности.
     """
     pages = []
-    for block in CITATION_BLOCK_PATTERN.findall(answer):
-        for reference in block.split(";"):
-            citation = CITATION_PATTERN.fullmatch(reference)
-            if citation:
-                pages.append(Page(
-                    document = citation.group("document").strip(),
-                    number = int(citation.group("page")),
-                ))
+    for reference in split_references(answer):
+        citation = CITATION_PATTERN.fullmatch(reference)
+        if citation:
+            pages.append(Page(
+                document = citation.group("document").strip(),
+                number = int(citation.group("page")),
+            ))
 
     return pages
+
+
+def split_references(answer: str) -> List[str]:
+    """Разбивает ответ на отдельные попытки сослаться на источник.
+
+    Аргументы:
+        answer: текст ответа модели.
+
+    Возвращает:
+        Содержимое квадратных скобок, разделённое по «;»: по одной ссылке на элемент,
+        независимо от того, соблюдён в ней требуемый формат или нет.
+    """
+    return [
+        reference
+        for block in CITATION_BLOCK_PATTERN.findall(answer)
+        for reference in block.split(";")
+    ]
+
+
+def count_malformed_citations(answer: str) -> int:
+    """Считает ссылки, в которых упомянут файл, но формат нарушен.
+
+    Аргументы:
+        answer: текст ответа модели.
+
+    Возвращает:
+        Число ссылок вида «[отчёт.pdf, 10]» — без «стр.» или с иным отклонением
+        от формата, заданного промптом.
+    """
+    return sum(
+        1
+        for reference in split_references(answer)
+        if CITATION_ATTEMPT_MARKER in reference.lower() and not CITATION_PATTERN.fullmatch(reference)
+    )
 
 
 def count_found_snippets(context: str, snippets: Sequence[str]) -> int:
@@ -195,6 +236,7 @@ def measure(
         snippets_found = count_found_snippets(context, case.expected_snippets),
         snippets_total = len(case.expected_snippets),
         citations = len(citations),
+        malformed_citations = count_malformed_citations(answer),
         invented_citations = sum(1 for page in citations if page not in known_pages),
         outside_context_citations = sum(
             1 for page in citations if page in known_pages and page not in pages_in_context
@@ -257,7 +299,10 @@ def summarize(
         summary["fact_hit_rate"] = collect(with_snippets, unit = "вопросов")
 
     citations = collect_citations(cases = cases, measurements = measurements)
+    formats = collect_citation_format(cases = cases, measurements = measurements)
 
+    if formats is not None:
+        summary["citation_format"] = formats
     if citations is not None:
         summary["citation_honesty"] = citations
     # Считаем ответы, а не отказы: у всех метрик должно быть «больше — лучше»,
@@ -334,6 +379,41 @@ def collect_citations(
             case.number
             for case, metrics in zip(cases, measurements)
             if metrics.invented_citations or metrics.outside_context_citations
+        ],
+    )
+
+
+def collect_citation_format(
+    cases: Sequence[Case],
+    measurements: Sequence[CaseMetrics],
+) -> Measure | None:
+    """Сводит долю ссылок, записанных в требуемом промптом формате.
+
+    Без этой метрики модель, которая ссылается неправильно, неотличима от молчащей:
+    неразобранная ссылка просто не попадает в счёт.
+
+    Аргументы:
+        cases: контрольные вопросы.
+        measurements: метрики по каждому вопросу.
+
+    Возвращает:
+        Метрику либо None, если сослаться никто не пытался.
+    """
+    correct = sum(metrics.citations for metrics in measurements)
+    malformed = sum(metrics.malformed_citations for metrics in measurements)
+
+    if not correct + malformed:
+        return None
+
+    return Measure(
+        value = share(correct, correct + malformed),
+        scored = correct,
+        total = correct + malformed,
+        unit = "ссылок",
+        failed = [
+            case.number
+            for case, metrics in zip(cases, measurements)
+            if metrics.malformed_citations
         ],
     )
 
