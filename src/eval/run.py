@@ -5,8 +5,9 @@
     uv run python -m eval.run full         — поиск, ответы и разбор ссылок;
     uv run python -m eval.run full --judge — то же плюс оценка ответов моделью.
 
-Флаг --filters ограничивает поиск разметкой документов из поля tags у вопроса.
-Прогон с ним и без него под разными именами (--name) и даёт сравнение.
+Флаг --filters ограничивает поиск разметкой документов из поля tags у вопроса,
+флаг --rerank переставляет найденное cross-encoder. Прогон с флагом и без него
+под разными именами (--name) и даёт сравнение.
 
 Режим retrieval быстрый, потому что модель не вызывается: на нём и подбираются настройки
 поиска. Полный прогон нужен для отчёта и для метрик, которые считаются по тексту ответа.
@@ -19,6 +20,7 @@ from typing import List, Set
 import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.llms import LLM
+from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.vector_stores import MetadataFilters
 
 from eval.cases import QUESTIONS_PATH, Case, Page, load_cases
@@ -27,12 +29,18 @@ from eval.metrics import measure, summarize
 from eval.report import SnapshotBelongsToOtherSettings, print_summary, print_table, save_report
 from eval.results import CaseRun, to_pages
 from rag_assistant.config import AppConfig
-from rag_assistant.engine import RagEngine, Source, create_retriever, to_source
+from rag_assistant.engine import (
+    RagEngine,
+    Source,
+    create_retriever,
+    retrieval_top_k,
+    to_source,
+)
 from rag_assistant.index import find_collection, open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
 from rag_assistant.metadata_filters import build_filters
-from rag_assistant.models import configure_global_settings, create_llm
+from rag_assistant.models import configure_global_settings, create_llm, create_reranker
 
 
 def load_known_pages(config: AppConfig) -> Set[Page]:
@@ -63,6 +71,7 @@ def retrieve_sources(
     config: AppConfig,
     question: str,
     filters: MetadataFilters | None,
+    reranker: SentenceTransformerRerank | None,
 ) -> List[Source]:
     """Возвращает фрагменты по вопросу, не обращаясь к модели.
 
@@ -71,13 +80,25 @@ def retrieve_sources(
         config: конфигурация приложения.
         question: вопрос.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
+        reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
 
     Возвращает:
-        Фрагменты в порядке выдачи поиска.
+        Фрагменты в том порядке, в котором их увидела бы модель.
     """
-    retriever = create_retriever(index = index, config = config, filters = filters)
+    retriever = create_retriever(
+        index = index,
+        config = config,
+        filters = filters,
+        top_k = retrieval_top_k(config = config, reranker = reranker),
+    )
+    nodes = retriever.retrieve(question)
 
-    return [to_source(node) for node in retriever.retrieve(question)]
+    # Режим retrieval идёт мимо движка запросов, а постпроцессоры применяет он.
+    # Без этого вызова режимы retrieval и full мерили бы разные пайплайны.
+    if reranker is not None:
+        nodes = reranker.postprocess_nodes(nodes, query_str = question)
+
+    return [to_source(node) for node in nodes]
 
 
 def run_case(
@@ -86,6 +107,7 @@ def run_case(
     config: AppConfig,
     known_pages: Set[Page],
     filters: MetadataFilters | None,
+    reranker: SentenceTransformerRerank | None,
     with_answer: bool,
     judge: LLM | None,
 ) -> CaseRun:
@@ -97,6 +119,7 @@ def run_case(
         config: конфигурация приложения.
         known_pages: все страницы, лежащие в индексе.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
+        reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
         with_answer: True — спросить модель, False — снять только выдачу поиска.
         judge: модель-судья либо None, если оценка не нужна.
 
@@ -106,7 +129,13 @@ def run_case(
     if with_answer:
         # Движок собирается на вопрос, потому что фильтр у каждого вопроса свой.
         # Сборка — только обёртки над открытым индексом, без обращений к диску и сети.
-        response = RagEngine(index = index, config = config, filters = filters).ask(case.question)
+        engine = RagEngine(
+            index = index,
+            config = config,
+            filters = filters,
+            reranker = reranker,
+        )
+        response = engine.ask(case.question)
         sources = response.sources
         answer = response.text
     else:
@@ -115,6 +144,7 @@ def run_case(
             config = config,
             question = case.question,
             filters = filters,
+            reranker = reranker,
         )
         answer = ""
 
@@ -168,6 +198,11 @@ def parse_arguments() -> argparse.Namespace:
         action = "store_true",
         help = "ограничивать поиск разметкой документов из поля tags у вопроса",
     )
+    parser.add_argument(
+        "--rerank",
+        action = "store_true",
+        help = "переставлять найденные фрагменты cross-encoder из RERANK_MODEL",
+    )
     parser.add_argument("--name", default = "baseline", help = "имя снимка в docs/eval")
 
     arguments = parser.parse_args()
@@ -201,6 +236,7 @@ def main() -> None:
     cases = load_cases(QUESTIONS_PATH)
     known_pages = load_known_pages(config)
     judge = create_llm(config = config, model = config.judge_model) if arguments.judge else None
+    reranker = create_reranker(config) if arguments.rerank else None
 
     runs = []
     for case in cases:
@@ -212,6 +248,7 @@ def main() -> None:
                 config = config,
                 known_pages = known_pages,
                 filters = build_filters(case.tags) if arguments.filters else None,
+                reranker = reranker,
                 with_answer = arguments.mode == "full",
                 judge = judge,
             )

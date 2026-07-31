@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List
 
 from llama_index.core import VectorStoreIndex
+from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import AutoMergingRetriever
 from llama_index.core.schema import NodeWithScore
@@ -44,10 +45,25 @@ class Answer:
     sources: List[Source]
 
 
+def retrieval_top_k(config: AppConfig, reranker: SentenceTransformerRerank | None) -> int:
+    """Определяет, сколько фрагментов должен принести поиск.
+
+    Аргументы:
+        config: конфигурация приложения.
+        reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+
+    Возвращает:
+        Число кандидатов с запасом, когда фрагменты будут переставлены реранкером,
+        иначе ровно столько, сколько уйдёт модели.
+    """
+    return config.candidate_top_k if reranker is not None else config.top_k
+
+
 def create_retriever(
     index: VectorStoreIndex,
     config: AppConfig,
     filters: MetadataFilters | None,
+    top_k: int,
 ) -> AutoMergingRetriever:
     """Создаёт поиск, склеивающий найденные мелкие фрагменты в крупные.
 
@@ -59,14 +75,15 @@ def create_retriever(
         index: векторный индекс документов вместе с докстором.
         config: конфигурация приложения.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
-            Отбор идёт до поиска соседей, поэтому top_k набирается уже внутри
+            Отбор идёт до поиска соседей, поэтому выдача набирается уже внутри
             отобранных документов.
+        top_k: сколько фрагментов забирает поиск.
 
     Возвращает:
         Поиск, готовый отдавать фрагменты по вопросу.
     """
     return AutoMergingRetriever(
-        vector_retriever = index.as_retriever(similarity_top_k = config.top_k, filters = filters),
+        vector_retriever = index.as_retriever(similarity_top_k = top_k, filters = filters),
         storage_context = index.storage_context,
         verbose = False,
     )
@@ -80,6 +97,7 @@ class RagEngine:
         index: VectorStoreIndex,
         config: AppConfig,
         filters: MetadataFilters | None,
+        reranker: SentenceTransformerRerank | None,
     ) -> None:
         """Создаёт движок запросов поверх индекса.
 
@@ -87,10 +105,17 @@ class RagEngine:
             index: векторный индекс документов.
             config: конфигурация приложения.
             filters: отбор документов по метаданным либо None — искать по всему корпусу.
+            reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
         """
         self.query_engine = RetrieverQueryEngine.from_args(
-            retriever = create_retriever(index = index, config = config, filters = filters),
+            retriever = create_retriever(
+                index = index,
+                config = config,
+                filters = filters,
+                top_k = retrieval_top_k(config = config, reranker = reranker),
+            ),
             text_qa_template = QA_TEMPLATE,
+            node_postprocessors = [reranker] if reranker is not None else [],
         )
 
     def ask(self, question: str) -> Answer:

@@ -22,7 +22,7 @@ from rag_assistant.index import open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
 from rag_assistant.metadata_filters import TagFormatError, build_filters, parse_tags
-from rag_assistant.models import configure_global_settings, create_node_parser
+from rag_assistant.models import configure_global_settings, create_node_parser, create_reranker
 from rag_assistant.ui import build_app
 
 
@@ -110,7 +110,12 @@ def main() -> None:
     if arguments.command == "reindex":
         return
 
-    engine = RagEngine(index = index, config = config, filters = filters)
+    engine = RagEngine(
+        index = index,
+        config = config,
+        filters = filters,
+        reranker = create_reranker(config),
+    )
 
     if arguments.command == "ask":
         answer = engine.ask(arguments.question)

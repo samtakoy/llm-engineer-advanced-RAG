@@ -26,6 +26,8 @@ class AppConfig:
         llm_timeout_seconds: таймаут запроса к модели.
         llm_reasoning_effort: уровень reasoning (low, medium, high) или None.
         embedding_model: имя модели эмбеддингов из HuggingFace.
+        rerank_model: имя cross-encoder из HuggingFace, переставляющего найденные
+            фрагменты по близости к вопросу. Пусто — поиск отдаёт свой порядок.
         documents_dir: папка с исходными документами.
         parsed_dir: папка, в которую выгружается нарезка для просмотра.
         chroma_dir: папка, в которой ChromaDB хранит векторы.
@@ -39,7 +41,10 @@ class AppConfig:
         parent_chunk_size: размер родительского узла в тех же токенах. Векторизации
             не подлежит, поэтому окном эмбеддера не ограничен.
         chunk_overlap: перекрытие соседних чанков в тех же токенах.
-        top_k: сколько фрагментов забирает поиск.
+        top_k: сколько фрагментов уходит модели в контекст.
+        candidate_top_k: сколько фрагментов забирает поиск до реранкера. Реранкер
+            переставляет только то, что ему принесли, поэтому кандидатов берётся
+            больше, чем нужно в ответе. Без реранкера значение не используется.
     """
 
     llm_base_url: str
@@ -53,6 +58,7 @@ class AppConfig:
     llm_reasoning_effort: str | None
 
     embedding_model: str
+    rerank_model: str | None
 
     documents_dir: Path
     parsed_dir: Path
@@ -64,6 +70,7 @@ class AppConfig:
     parent_chunk_size: int
     chunk_overlap: int
     top_k: int
+    candidate_top_k: int
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -92,6 +99,9 @@ class AppConfig:
             llm_reasoning_effort = os.getenv("LOCAL_REASONING_EFFORT") or None,
 
             embedding_model = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-small"),
+            # Окно у reranker-v2-m3 то же, что у bge-m3: родительский узел размером
+            # в страницу проходит целиком, а не обрезается на середине.
+            rerank_model = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3") or None,
 
             documents_dir = PROJECT_ROOT / os.getenv("DOCUMENTS_DIR", "documents"),
             parsed_dir = PROJECT_ROOT / os.getenv("PARSED_DIR", "parsed"),
@@ -107,4 +117,5 @@ class AppConfig:
             parent_chunk_size = int(os.getenv("PARENT_CHUNK_SIZE", "1000")),
             chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200")),
             top_k = int(os.getenv("TOP_K", "5")),
+            candidate_top_k = int(os.getenv("CANDIDATE_TOP_K", "20")),
         )
