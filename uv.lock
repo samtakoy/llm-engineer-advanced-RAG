@@ -2237,6 +2237,7 @@ dependencies = [
     { name = "llama-index-vector-stores-chroma" },
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "sentence-transformers" },
 ]
 
@@ -2253,8 +2254,9 @@ requires-dist = [
     { name = "llama-index-embeddings-huggingface", specifier = "==0.7.0" },
     { name = "llama-index-llms-openai-like", specifier = "==0.7.2" },
     { name = "llama-index-vector-stores-chroma", specifier = "==0.5.5" },
-    { name = "pymupdf4llm", specifier = ">=1.28.0" },
+    { name = "pymupdf4llm", specifier = "==1.28.0" },
     { name = "python-dotenv", specifier = "==1.2.2" },
+    { name = "pyyaml", specifier = "==6.0.3" },
     { name = "sentence-transformers", specifier = "==5.6.0" },
 ]
 

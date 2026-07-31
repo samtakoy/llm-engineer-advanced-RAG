@@ -17,11 +17,15 @@ class Source:
         citation: ссылка для показа пользователю, например "отчёт.pdf, стр. 12".
         text: текст фрагмента.
         score: близость фрагмента к вопросу.
+        file_name: имя исходного файла.
+        page_label: номер страницы либо None, если источник без страниц.
     """
 
     citation: str
     text: str
     score: float
+    file_name: str
+    page_label: str | None
 
 
 @dataclass(frozen = True)
@@ -82,4 +86,10 @@ def to_source(node: NodeWithScore) -> Source:
     page_label = node.metadata.get("page_label")
     citation = f"{file_name}, стр. {page_label}" if page_label else file_name
 
-    return Source(citation = citation, text = node.text, score = node.score or 0.0)
+    return Source(
+        citation = citation,
+        text = node.text,
+        score = node.score or 0.0,
+        file_name = file_name,
+        page_label = page_label,
+    )

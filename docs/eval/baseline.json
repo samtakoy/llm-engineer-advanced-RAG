@@ -1,0 +1,654 @@
+{
+  "settings": {
+    "llm_model": "google/gemma-4-26b-a4b-qat",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "top_k": 5
+  },
+  "summary": {
+    "page_hit_rate": {
+      "value": 1.0,
+      "scored": 10.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": []
+    },
+    "page_hit_rate@3": {
+      "value": 0.8,
+      "scored": 8.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": [
+        5,
+        6
+      ]
+    },
+    "mrr": {
+      "value": 0.8666666666666666,
+      "scored": 8.666666666666666,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": [
+        4,
+        5
+      ]
+    },
+    "fact_hit_rate": {
+      "value": 0.9,
+      "scored": 9.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": [
+        7
+      ]
+    },
+    "citation_honesty": {
+      "value": 1.0,
+      "scored": 13,
+      "total": 13,
+      "unit": "ссылок",
+      "failed": []
+    },
+    "answered_rate": {
+      "value": 0.8,
+      "scored": 8.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": [
+        7,
+        9
+      ]
+    },
+    "refusal_rate": {
+      "value": 1.0,
+      "scored": 1.0,
+      "total": 1,
+      "unit": "вопросов",
+      "failed": []
+    },
+    "judge_parsed": {
+      "value": 1.0,
+      "scored": 10.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": []
+    },
+    "faithfulness": {
+      "value": 1.0,
+      "scored": 10.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": []
+    },
+    "correctness": {
+      "value": 0.8,
+      "scored": 8.0,
+      "total": 10,
+      "unit": "вопросов",
+      "failed": [
+        7,
+        9
+      ]
+    }
+  },
+  "cases": [
+    {
+      "number": 1,
+      "question": "Какая была рентабельность по EBITDA в 2025 году?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 10",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "FY2024_Issuer's report.pdf, стр. 8"
+      ],
+      "answer": "Рентабельность по EBITDA Группы в 2025 году составила 40,9% [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Рентабельность по EBITDA Группы в 2025 году составила 40,9%",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "40,9%",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует эталонному по смыслу и числовым значениям.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 2,
+      "question": "Сколько коек в госпитальном центре АО «Семейный доктор»?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 16"
+      ],
+      "answer": "Многопрофильный госпитальный центр АО «Семейный доктор» рассчитан на 78 коек [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Многопрофильный госпитальный центр АО «Семейный доктор» рассчитан на 78 коек",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "78 коек",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует предоставленному контексту и эталонному ответу.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 3,
+      "question": "Сколько поликлинических визитов было у Группы за 12 месяцев 2025 года?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "FY2024_Issuer's report.pdf, стр. 6",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7"
+      ],
+      "answer": "Количество поликлинических визитов и помощи на дому составило 359 443 [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Количество поликлинических визитов и помощи на дому составило 359 443",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "359 443 визита",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует предоставленному контексту и эталонному ответу.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 4,
+      "question": "Какой средний чек на услуги стационара в рублях?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 6",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9"
+      ],
+      "answer": "Средний чек на услуги стационара АО «Семейный доктор» за ноябрь – декабрь 2025 года составил 154 175 рублей [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 0.3333333333333333,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Средний чек на услуги стационара АО «Семейный доктор» за ноябрь – декабрь 2025 года составил 154 175 рублей",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "154 175 рублей",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует эталонному по смыслу и числовым значениям, хотя содержит избыточную информацию.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 5,
+      "question": "Как изменилась EBITDA Группы в евро с 2023 по 2025 год?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 27"
+      ],
+      "answer": "EBITDA Группы в евро изменилась следующим образом:\n*   В 2023 году она составила 115,9 млн евро [FY2024_Issuer's report.pdf, стр. 7].\n*   В 2024 году показатель составил 115,4 млн евро (на уровне 2023 года) [FY2024_Issuer's report.pdf, стр. 8].\n*   В 2025 году EBITDA Группы в евро составила 118,5 млн евро (рост на 2,7% против 2024 года) [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": false,
+        "covered_groups": 2,
+        "total_groups": 2,
+        "reciprocal_rank": 0.3333333333333333,
+        "unique_pages": 4,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 3,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "В 2023 году EBITDA Группы в евро составила 115,9 млн евро.",
+            "holds": true
+          },
+          {
+            "text": "В 2024 году показатель составил 115,4 млн евро (на уровне 2023 года).",
+            "holds": true
+          },
+          {
+            "text": "В 2025 году EBITDA Группы в евро составила 118,5 млн евро (рост на 2,7% против 2024 года).",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "115,9 млн евро в 2023",
+            "holds": true
+          },
+          {
+            "text": "115,4 млн евро в 2024",
+            "holds": true
+          },
+          {
+            "text": "118,5 млн евро в 2025",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует предоставленным фрагментам и эталонному ответу.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 6,
+      "question": "С какими банками у Группы заключены кредитные соглашения с финансовыми ковенантами и какие именно ковенанты предусмотрены?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 36",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 24",
+        "FY2024_Issuer's report.pdf, стр. 26",
+        "FY2024_Issuer's report.pdf, стр. 37",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 31"
+      ],
+      "answer": "У Группы есть следующие кредитные соглашения с финансовыми ковенантами:\n\n*   **С Райффайзенбанком:** необходимо поддерживать отношение чистого долга к EBITDA не более 3,0 и коэффициент автономии (отношение собственного капитала к валюте баланса, умноженное на 100%) не менее 20% [FY2024_Issuer's report.pdf, стр. 36]. В случае нарушения этих ковенантов Группа может объявлять и выплачивать дивиденды только с предварительного согласия Райффайзенбанка [FY2024_Issuer's report.pdf, стр. 36].\n*   **Со Сбербанком:** предусмотрено соблюдение показателя отношения чистого долга к EBITDA не более 3,0 [FY2024_Issuer's report.pdf, стр. 37].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": false,
+        "covered_groups": 2,
+        "total_groups": 2,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 5,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 3,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "С Райффайзенбанком заключено кредитное соглашение с финансовыми ковенантами.",
+            "holds": true
+          },
+          {
+            "text": "По соглашению с Райффайзенбанком необходимо поддерживать отношение чистого долга к EBITDA не более 3,0.",
+            "holds": true
+          },
+          {
+            "text": "По соглашению с Райффайзенбанком необходимо поддерживать коэффициент автономии (отношение собственного капитала к валюте баланса, умноженное на 100%) не менее 20%.",
+            "holds": true
+          },
+          {
+            "text": "При нарушении ковенантов с Райффайзенбанком выплата дивидендов возможна только с его предварительного согласия.",
+            "holds": true
+          },
+          {
+            "text": "Со Сбербанком заключено кредитное соглашение, содержащее финансовый показатель отношения чистого долга к EBITDA не более 3,0.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "Райффайзенбанк",
+            "holds": true
+          },
+          {
+            "text": "Сбербанк",
+            "holds": true
+          },
+          {
+            "text": "Отношение чистого долга к EBITDA не более 3,0",
+            "holds": true
+          },
+          {
+            "text": "Коэффициент автономии не менее 20%",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует контексту и содержит все факты из эталонного ответа, включая дополнительные детали.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 7,
+      "question": "Кто крупнейший конкурент ЕМС по выручке и какая у него доля рынка?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 6",
+        "FY2024_Issuer's report.pdf, стр. 19",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 6",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 19"
+      ],
+      "answer": "Я не знаю.",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 4,
+        "snippets_found": 0,
+        "snippets_total": 2,
+        "citations": 0,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": true
+      },
+      "verdict": {
+        "claims": [],
+        "expected_facts": [
+          {
+            "text": "ГК «Медси»",
+            "holds": false
+          },
+          {
+            "text": "выручка 50,3 млрд рублей",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент не предоставил ответа на вопрос, в то время как эталонный ответ содержит конкретного конкурента и его показатель выручки.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 8,
+      "question": "Какие новые проекты Группа считает драйверами роста?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "FY2024_Issuer's report.pdf, стр. 38",
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "FY2024_Issuer's report.pdf, стр. 35",
+        "FY2024_Issuer's report.pdf, стр. 36"
+      ],
+      "answer": "К крупным проектам, связанным с ростом Группы, относятся:\n* реконструкция и оснащение (в несколько этапов в течение пяти-семи лет) Московского международного онкологического центра;\n* продолжение развития недавно введенных в эксплуатацию Родильного дома ЕМС в Москве;\n* развитие реабилитационного центра Группы в Жуковке в Московской области;\n* Международный онкологический центр в Коломне (запущен в 2020 году);\n* проект МОНИКИ [FY2024_Issuer's report.pdf, стр. 35].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "К крупным проектам, связанным с ростом Группы, относится реконструкция и оснащение Московского международного онкологического центра в несколько этапов в течение пяти-семи лет.",
+            "holds": true
+          },
+          {
+            "text": "К крупным проектам относится продолжение развития недавно введенного Родильного дома ЕМС в Москве.",
+            "holds": true
+          },
+          {
+            "text": "К крупным проектам относится развитие реабилитационного центра Группы в Жуковке в Московской области.",
+            "holds": true
+          },
+          {
+            "text": "К крупным проектам относится Международный онкологический центр в Коломне (запущен в 2020 году).",
+            "holds": true
+          },
+          {
+            "text": "К крупным проектам относится проект МОНИКИ.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "Родильный дом EMC",
+            "holds": true
+          },
+          {
+            "text": "реабилитационный центр в Жуковке",
+            "holds": true
+          },
+          {
+            "text": "онкологические центры в Москве и других регионах России",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ассистент предоставил более детализированный список, который полностью включает все факты из эталонного ответа.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 9,
+      "question": "На сколько коек рассчитана клиника МОНИКИ и какова её площадь?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 15",
+        "FY2024_Issuer's report.pdf, стр. 35",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 30",
+        "FY2024_Issuer's report.pdf, стр. 15",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8"
+      ],
+      "answer": "Я не знаю.",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 0,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": true
+      },
+      "verdict": {
+        "claims": [],
+        "expected_facts": [
+          {
+            "text": "27 коек",
+            "holds": false
+          },
+          {
+            "text": "площадь 4 655 квадратных метров",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент не предоставил ответа, в то время как в тексте содержатся искомые данные.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 10,
+      "question": "Сколько стоит первичный приём кардиолога в ЕМС?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 6",
+        "FY2024_Issuer's report.pdf, стр. 10",
+        "FY2024_Issuer's report.pdf, стр. 62",
+        "FY2024_Issuer's report.pdf, стр. 6"
+      ],
+      "answer": "Я не знаю.",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 0,
+        "total_groups": 0,
+        "reciprocal_rank": 0.0,
+        "unique_pages": 5,
+        "snippets_found": 0,
+        "snippets_total": 0,
+        "citations": 0,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": true
+      },
+      "verdict": null
+    },
+    {
+      "number": 11,
+      "question": "Перечисли все риски, которые эмитент относит к финансовым.",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 26",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 16",
+        "FY2024_Issuer's report.pdf, стр. 42",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 24",
+        "FY2024_Issuer's report.pdf, стр. 17"
+      ],
+      "answer": "К финансовым рискам, которые могут повлиять на деятельность Эмитента и компаний Группы, относятся:\n1. процентный риск;\n2. риск ликвидности;\n3. кредитный риск;\n4. валютные риски [FY2024_Issuer's report.pdf, стр. 26], [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 24].",
+      "metrics": {
+        "page_hit": true,
+        "page_hit_at_3": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 2,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "К финансовым рискам относятся процентный риск.",
+            "holds": true
+          },
+          {
+            "text": "К финансовым рискам относится риск ликвидности.",
+            "holds": true
+          },
+          {
+            "text": "К финансовым рискам относится кредитный риск.",
+            "holds": true
+          },
+          {
+            "text": "К финансовым рискам относятся валютные риски.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "валютный риск",
+            "holds": true
+          },
+          {
+            "text": "процентный риск",
+            "holds": true
+          },
+          {
+            "text": "кредитный риск",
+            "holds": true
+          },
+          {
+            "text": "риск ликвидности",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует эталонному, все факты из эталона присутствуют в ответе.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    }
+  ]
+}
