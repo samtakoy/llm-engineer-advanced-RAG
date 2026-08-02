@@ -1,9 +1,8 @@
 """Точка входа проекта.
 
 Команды:
-    uv run main.py              — поднять веб-чат;
-    uv run main.py reindex      — перестроить индекс с нуля и выйти;
     uv run main.py ask "вопрос" — один вопрос в терминале;
+    uv run main.py reindex      — перестроить индекс с нуля и выйти;
     uv run main.py parse        — выгрузить нарезку в parsed/ для просмотра.
 
 Поиск можно ограничить разметкой документов:
@@ -24,7 +23,6 @@ from rag_assistant.ingest import load_documents
 from rag_assistant.lexical import create_lexical_index
 from rag_assistant.metadata_filters import TagFormatError, build_filters, parse_tags
 from rag_assistant.models import configure_global_settings, create_node_parser, create_reranker
-from rag_assistant.ui import build_app
 
 
 def prepare_index(config: AppConfig, rebuild: bool) -> VectorStoreIndex:
@@ -55,10 +53,8 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = "RAG-ассистент по годовым отчётам")
     parser.add_argument(
         "command",
-        nargs = "?",
-        choices = ["ui", "ask", "reindex", "parse"],
-        default = "ui",
-        help = "ui — веб-чат (по умолчанию), ask — один вопрос в терминале, "
+        choices = ["ask", "reindex", "parse"],
+        help = "ask — один вопрос в терминале, "
                "reindex — перестроить индекс с нуля и выйти, "
                "parse — выгрузить нарезку в parsed/",
     )
@@ -127,8 +123,6 @@ def main() -> None:
         for source in answer.sources:
             print(f"  {source.citation}  (score {source.score:.3f})")
         return
-
-    build_app(engine).launch()
 
 
 if __name__ == "__main__":

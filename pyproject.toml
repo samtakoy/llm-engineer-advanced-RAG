@@ -1,13 +1,12 @@
 [project]
 name = "simple-rag"
 version = "0.1.0"
-description = "RAG-ассистент по годовым отчётам: LlamaIndex + ChromaDB + Gradio"
+description = "RAG-ассистент по годовым отчётам: LlamaIndex + ChromaDB"
 readme = "README.md"
 requires-python = "==3.13.9"
 dependencies = [
     "bm25s==0.3.10",
     "chromadb==1.5.9",
-    "gradio==6.20.0",
     "llama-index-core==0.14.23",
     "llama-index-embeddings-huggingface==0.7.0",
     "llama-index-llms-openai-like==0.7.2",

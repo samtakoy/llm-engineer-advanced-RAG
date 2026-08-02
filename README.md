@@ -2,7 +2,7 @@
 
 Ассистент отвечает на вопросы по PDF из папки `documents`, подставляя в ответ имя файла и номер страницы.
 
-Стек: LlamaIndex + ChromaDB + Gradio, модель отвечает через локальный OpenAI-совместимый сервер (LM Studio).
+Стек: LlamaIndex + ChromaDB, модель отвечает через локальный OpenAI-совместимый сервер (LM Studio).
 
 ## Документы
 
@@ -37,12 +37,6 @@ uv run src/scripts/fetch_reports.py
 ```bash
 uv sync
 cp .env.example .env      # при необходимости поправить модель и адрес сервера
-uv run main.py            # веб-чат на http://localhost:7860
-```
-
-Один вопрос без интерфейса:
-
-```bash
 uv run main.py ask "Какая выручка была в 2024 году?"
 ```
 
@@ -140,7 +134,6 @@ src/rag_assistant/
     lexical.py       поиск по словам, индекс BM25 в памяти
     engine.py        вопрос -> ответ со ссылками
     prompts.py       промпт ответа по контексту
-    ui.py            интерфейс чата
 src/scripts/
     fetch_reports.py скачивание отчётов с портала раскрытия
 ```
