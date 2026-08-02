@@ -16,7 +16,6 @@ import bm25s
 import numpy as np
 from llama_index.core import VectorStoreIndex
 from llama_index.core.callbacks import CallbackManager
-from llama_index.core.node_parser import get_leaf_nodes
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import BaseNode, MetadataMode, NodeWithScore, QueryBundle
 from llama_index.core.vector_stores import MetadataFilters
@@ -35,8 +34,7 @@ class LexicalIndex:
         """Строит индекс по словам.
 
         Аргументы:
-            nodes: узлы, по которым идёт поиск. Ожидаются листья: родительские узлы
-                повторяют их текст и в выдаче конкурировали бы со своими же потомками.
+            nodes: узлы, по которым идёт поиск, — весь корпус целиком.
         """
         self.nodes = nodes
         self.stemmer = Stemmer.Stemmer(LANGUAGE)
@@ -105,7 +103,7 @@ class LexicalIndex:
 
 
 def create_lexical_index(index: VectorStoreIndex) -> LexicalIndex:
-    """Строит индекс по словам поверх листьев векторного индекса.
+    """Строит индекс по словам поверх узлов векторного индекса.
 
     Тексты берутся из докстора: векторное хранилище отдаёт вектора, а не слова.
 
@@ -115,7 +113,7 @@ def create_lexical_index(index: VectorStoreIndex) -> LexicalIndex:
     Возвращает:
         Готовый к поиску индекс по словам.
     """
-    return LexicalIndex(nodes = get_leaf_nodes(list(index.docstore.docs.values())))
+    return LexicalIndex(nodes = list(index.docstore.docs.values()))
 
 
 class LexicalRetriever(BaseRetriever):

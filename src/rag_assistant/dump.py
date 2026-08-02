@@ -7,20 +7,16 @@ from pathlib import Path
 from typing import Dict, List, Sequence
 
 from llama_index.core import Document
-from llama_index.core.node_parser import HierarchicalNodeParser, get_leaf_nodes
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import BaseNode, MetadataMode
 
 
 def write_corpus(
     documents: Sequence[Document],
-    node_parser: HierarchicalNodeParser,
+    node_parser: SentenceSplitter,
     target_dir: Path,
 ) -> Dict[str, int]:
     """Режет документы и записывает нарезку в markdown, по файлу на документ.
-
-    Выгружаются листья: именно они векторизуются и участвуют в поиске.
-    Родительские узлы — их же текст более крупными кусками, показывать его
-    второй раз незачем.
 
     Аргументы:
         documents: документы, прочитанные из папки.
@@ -32,9 +28,7 @@ def write_corpus(
     """
     target_dir.mkdir(parents = True, exist_ok = True)
 
-    nodes_by_source = group_nodes_by_source(
-        get_leaf_nodes(node_parser.get_nodes_from_documents(list(documents))),
-    )
+    nodes_by_source = group_nodes_by_source(node_parser.get_nodes_from_documents(list(documents)))
     written = {}
 
     for source, nodes in nodes_by_source.items():

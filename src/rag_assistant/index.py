@@ -5,7 +5,6 @@ import chromadb
 from chromadb.api import ClientAPI
 from chromadb.api.models.Collection import Collection
 from llama_index.core import Document, StorageContext, VectorStoreIndex
-from llama_index.core.node_parser import get_leaf_nodes
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
@@ -20,7 +19,7 @@ COLLECTION_CONFIGURATION = {"hnsw": {"space": "cosine"}}
 
 
 class DocstoreMissing(RuntimeError):
-    """Векторы коллекции есть, а сохранённых связей между узлами рядом нет."""
+    """Векторы коллекции есть, а сохранённых текстов узлов рядом нет."""
 
 
 def find_collection(client: ClientAPI, name: str) -> Collection | None:
@@ -65,12 +64,11 @@ def build_index(
         docstore = SimpleDocumentStore(),
     )
 
-    # В докстор кладутся все узлы, включая родительские: по ним поиск потом
-    # собирает крупный фрагмент. Векторизуются только листья — родитель попал бы
-    # в выдачу наравне с потомками и занял бы место своей же копией.
+    # Узлы кладутся и в докстор, и в векторное хранилище: в Chroma они нужны для
+    # поиска по смыслу, а в доксторе — bm25.
     storage_context.docstore.add_documents(nodes)
     index = VectorStoreIndex(
-        nodes = get_leaf_nodes(nodes),
+        nodes = nodes,
         storage_context = storage_context,
         show_progress = True,
     )
@@ -90,11 +88,11 @@ def load_index(config: AppConfig, collection: Collection) -> VectorStoreIndex:
         Индекс поверх существующей коллекции ChromaDB и сохранённого докстора.
 
     Исключения:
-        DocstoreMissing: коллекция есть, а файла со связями узлов рядом нет.
+        DocstoreMissing: коллекция есть, а файла с узлами рядом нет.
     """
     if not config.docstore_path.exists():
         raise DocstoreMissing(
-            f"Векторы есть, а связи узлов ({config.docstore_path}) не найдены. "
+            f"Векторы есть, а узлы ({config.docstore_path}) не найдены. "
             f"Перестроить: uv run main.py reindex",
         )
 
@@ -128,7 +126,7 @@ def open_index(
 
     Исключения:
         IndexSettingsChanged: готовый индекс построен на других настройках.
-        DocstoreMissing: векторы есть, а связей между узлами нет.
+        DocstoreMissing: векторы есть, а узлов рядом нет.
     """
     client = chromadb.PersistentClient(path = str(config.chroma_dir))
     collection = find_collection(client = client, name = config.chroma_collection)

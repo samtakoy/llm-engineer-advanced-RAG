@@ -28,7 +28,6 @@ def build_signature(config: AppConfig) -> Dict[str, str]:
     return {
         "embedding_model": config.embedding_model,
         "chunk_size": str(config.chunk_size),
-        "parent_chunk_size": str(config.parent_chunk_size),
         "chunk_overlap": str(config.chunk_overlap),
         "document_metadata": format_document_metadata(),
     }
@@ -52,7 +51,7 @@ def format_document_metadata() -> str:
 def find_signature_changes(
     stored: Mapping[str, str],
     config: AppConfig,
-) -> Dict[str, Tuple[str | None, str]]:
+) -> Dict[str, Tuple[str | None, str | None]]:
     """Ищет настройки, разошедшиеся с сохранённой подписью.
 
     Аргументы:
@@ -61,17 +60,20 @@ def find_signature_changes(
 
     Возвращает:
         Расхождения по имени настройки: «что записано при сборке, что в конфигурации».
-        Пусто — настройки совпали. Записанное значение равно None, если настройки
-        в подписи не было вовсе.
+        Пусто — настройки совпали. None на месте записанного значения означает, что
+        настройки в подписи не было вовсе, None на месте текущего — что настройка
+        из подписи ушла, а индекс собран ещё с ней.
     """
+    signature = build_signature(config)
+
     return {
-        key: (stored.get(key), value)
-        for key, value in build_signature(config).items()
-        if stored.get(key) != value
+        key: (stored.get(key), signature.get(key))
+        for key in set(stored) | set(signature)
+        if stored.get(key) != signature.get(key)
     }
 
 
-def describe_signature_changes(changed: Mapping[str, Tuple[str | None, str]]) -> str:
+def describe_signature_changes(changed: Mapping[str, Tuple[str | None, str | None]]) -> str:
     """Описывает расхождения настроек для сообщения пользователю.
 
     Аргументы:
@@ -82,7 +84,7 @@ def describe_signature_changes(changed: Mapping[str, Tuple[str | None, str]]) ->
     """
     return "; ".join(
         f"{key}: собрано на «{was if was is not None else 'настройке без подписи'}», "
-        f"в конфигурации «{now}»"
+        f"в конфигурации «{now if now is not None else 'настройки больше нет'}»"
         for key, (was, now) in sorted(changed.items())
     )
 

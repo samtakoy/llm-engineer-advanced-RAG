@@ -22,8 +22,8 @@ from typing import List, Set
 import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.llms import LLM
-from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.vector_stores import MetadataFilters
+from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
 
 from eval.cases import QUESTIONS_PATH, Case, Page, load_cases
 from eval.judge import judge_answer

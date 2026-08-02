@@ -1043,6 +1043,18 @@ wheels = [
 ]
 
 [[package]]
+name = "llama-index-postprocessor-sbert-rerank"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "llama-index-core" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/be/29/832f6614e036dba7f546f955276a30b070b2d117a544b9fa63afddb7fb58/llama_index_postprocessor_sbert_rerank-0.5.0.tar.gz", hash = "sha256:f88bd229ffed8ad62b33d225ec42f31e3b498bf3a9094691c714126fa879317e", size = 4757, upload-time = "2026-03-12T20:32:17.316Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/36/e96af2f96bd23243d51b0f6f288e18528446e54d4397a91514d0fa97ab48/llama_index_postprocessor_sbert_rerank-0.5.0-py3-none-any.whl", hash = "sha256:4d03fff0eeab551a28d653e13dc3b413013c2f85f89ae4203eef61a62d5919a3", size = 4491, upload-time = "2026-03-12T20:32:16.638Z" },
+]
+
+[[package]]
 name = "llama-index-vector-stores-chroma"
 version = "0.5.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2263,6 +2275,7 @@ dependencies = [
     { name = "llama-index-core" },
     { name = "llama-index-embeddings-huggingface" },
     { name = "llama-index-llms-openai-like" },
+    { name = "llama-index-postprocessor-sbert-rerank" },
     { name = "llama-index-vector-stores-chroma" },
     { name = "pymupdf4llm" },
     { name = "pystemmer" },
@@ -2284,6 +2297,7 @@ requires-dist = [
     { name = "llama-index-core", specifier = "==0.14.23" },
     { name = "llama-index-embeddings-huggingface", specifier = "==0.7.0" },
     { name = "llama-index-llms-openai-like", specifier = "==0.7.2" },
+    { name = "llama-index-postprocessor-sbert-rerank", specifier = "==0.5.0" },
     { name = "llama-index-vector-stores-chroma", specifier = "==0.5.5" },
     { name = "pymupdf4llm", specifier = "==1.28.0" },
     { name = "pystemmer", specifier = "==2.2.0.3" },

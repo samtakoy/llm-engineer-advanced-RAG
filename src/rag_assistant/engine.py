@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from typing import List
 
 from llama_index.core import VectorStoreIndex
-from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.retrievers import AutoMergingRetriever, BaseRetriever, QueryFusionRetriever
+from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.core.schema import NodeWithScore
 from llama_index.core.vector_stores import MetadataFilters
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
+from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
 
 from rag_assistant.config import AppConfig
 from rag_assistant.lexical import LexicalIndex, LexicalRetriever
@@ -103,18 +103,14 @@ def create_retriever(
     top_k: int,
     lexical_index: LexicalIndex | None,
     mmr_threshold: float | None,
-) -> AutoMergingRetriever:
-    """Создаёт поиск, склеивающий найденные мелкие фрагменты в крупные.
-
-    Ищет по листьям, потому что векторизованы только они. Если в выдачу попало
-    больше половины листьев одного родителя, они заменяются родителем целиком:
-    факт, разорванный границей чанка, так возвращается собранным.
+) -> BaseRetriever:
+    """Создаёт поиск по корпусу: одну ветку либо объединение веток.
 
     Аргументы:
         index: векторный индекс документов вместе с докстором.
         config: конфигурация приложения.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
-            Отбор идёт до поиска соседей, поэтому выдача набирается уже внутри
+            Отбор идёт до поиска, поэтому выдача набирается уже внутри
             отобранных документов.
         top_k: сколько фрагментов забирает поиск.
         lexical_index: индекс поиска по словам либо None — искать только векторно.
@@ -142,10 +138,10 @@ def create_retriever(
             )
         )
 
-    # Ветки объединяются до склейки листьев: иначе в общий список попали бы
-    # и склеенный родитель от векторного поиска, и его же лист от поиска по
-    # словам — один и тот же текст двумя строками, занимающими два места.
-    found = branches[0] if len(branches) == 1 else QueryFusionRetriever(
+    if len(branches) == 1:
+        return branches[0]
+
+    return QueryFusionRetriever(
         retrievers = branches,
         # Ранги выдач складываются по взаимному рангу: фрагмент, стоящий высоко
         # в нескольких ветках, поднимается выше лидера любой одной из них.
@@ -155,12 +151,6 @@ def create_retriever(
         # объединение сперва просит модель придумать похожие формулировки.
         num_queries = 1,
         use_async = False,
-    )
-
-    return AutoMergingRetriever(
-        vector_retriever = found,
-        storage_context = index.storage_context,
-        verbose = False,
     )
 
 

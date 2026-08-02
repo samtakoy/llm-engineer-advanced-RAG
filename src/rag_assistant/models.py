@@ -3,18 +3,13 @@ from typing import Callable, List
 
 import torch
 from llama_index.core import Settings
-from llama_index.core.node_parser import HierarchicalNodeParser, SentenceSplitter
-from llama_index.core.postprocessor import SentenceTransformerRerank
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
+from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
 from transformers import AutoTokenizer
 
 from rag_assistant.config import AppConfig
-
-# Имена уровней нарезки: порядок в HierarchicalNodeParser задаёт вложенность,
-# первый уровень режет документ, каждый следующий — узлы предыдущего.
-PARENT_LEVEL = "parent"
-LEAF_LEVEL = "leaf"
 
 
 class TextTooLongForModel(RuntimeError):
@@ -42,18 +37,6 @@ class SchemaConstrainedLLM(OpenAILike):
             True всегда: класс и создаётся для серверов, которые это умеют.
         """
         return True
-
-
-def model_window(model) -> int:
-    """Определяет, сколько токенов модель физически способна прочитать.
-
-    Аргументы:
-        model: SentenceTransformer или CrossEncoder.
-
-    Возвращает:
-        Размер окна модели в токенах.
-    """
-    return model[0].auto_model.config.max_position_embeddings
 
 
 def select_device() -> str:
@@ -117,7 +100,7 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
         обязательные префиксы "query:" и "passage:".
 
     Исключения:
-        TextTooLongForModel: листовой чанк не помещается в окно модели.
+        TextTooLongForModel: чанк не помещается в окно модели.
     """
     is_e5_family = "e5" in config.embedding_model.lower()
 
@@ -130,9 +113,9 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
         query_instruction = "query:" if is_e5_family else None,
         text_instruction = "passage:" if is_e5_family else None,
     )
-    # Векторизуются листья, поэтому в окно должен помещаться именно лист. Всё, что
-    # за границей окна, модель отбрасывает без предупреждения: текст лежал бы
-    # в индексе, но для поиска не существовал.
+    # В окно должен помещаться весь чанк. Всё, что за границей окна, модель
+    # отбрасывает без предупреждения: текст лежал бы в индексе, но для поиска
+    # не существовал.
     limit = embedding_model._model.max_seq_length
 
     if config.chunk_size > limit:
@@ -157,36 +140,22 @@ def create_reranker(config: AppConfig) -> SentenceTransformerRerank | None:
 
     Возвращает:
         Реранкер либо None, если модель не задана: тогда порядок остаётся за поиском.
-
-    Исключения:
-        TextTooLongForModel: родительский узел не помещается в окно модели.
     """
     if not config.rerank_model:
         return None
 
-    reranker = SentenceTransformerRerank(
+    return SentenceTransformerRerank(
         model = config.rerank_model,
         top_n = config.top_k,
         device = select_device(),
         keep_retrieval_score = True,
+        # Класс из llama-index-core зашивает предел в 512 токенов и наружу его
+        # не отдаёт; у этой же обёртки отдельной интеграцией настройки CrossEncoder
+        # открыты. None означает «взять предел, объявленный самой моделью» — без
+        # этого ключа интеграция подставит те же 512, и хвост длинного узла молча
+        # не дошёл бы до оценки.
+        cross_encoder_kwargs = {"max_length": None},
     )
-    # Реранкер оценивает то, что вернул поиск, а поиск отдаёт склеенные родительские
-    # узлы — значит мерить нужно по их размеру, а не по размеру листа.
-    window = model_window(reranker._model)
-
-    if config.parent_chunk_size > window:
-        raise TextTooLongForModel(
-            f"PARENT_CHUNK_SIZE={config.parent_chunk_size} больше окна модели "
-            f"{config.rerank_model} ({window} токенов). Конец узла до оценки не дойдёт — "
-            f"возьмите модель с большим окном или уменьшите PARENT_CHUNK_SIZE.",
-        )
-
-    # Обёртка llama-index создаёт модель с жёстким пределом в 512 токенов и параметра
-    # не даёт, поэтому предел поднимается до размера родительского узла: на 512 токенах
-    # хвост узла молча не дошёл бы до оценки.
-    reranker._model.max_seq_length = config.parent_chunk_size
-
-    return reranker
 
 
 def create_embedding_tokenizer(config: AppConfig) -> Callable[[str], List[int]]:
@@ -207,12 +176,10 @@ def create_embedding_tokenizer(config: AppConfig) -> Callable[[str], List[int]]:
     return tokenizer.encode
 
 
-def create_node_parser(config: AppConfig) -> HierarchicalNodeParser:
-    """Создаёт сплиттер документов на двухуровневые узлы.
+def create_node_parser(config: AppConfig) -> SentenceSplitter:
+    """Создаёт сплиттер документов на узлы одного уровня.
 
-    Векторизуются только листья, поэтому их размер ограничен окном эмбеддера.
-    Родительский узел крупнее и нужен на выдаче: когда в неё попадает несколько
-    листьев одного родителя, поиск отдаёт модели родителя целиком.
+    Каждый узел векторизуется, поэтому его размер ограничен окном эмбеддера.
 
     Размер чанка меряется токенизатором эмбеддера, а не заданным по умолчанию
     токенизатором OpenAI: у них разное дробление русского текста, и на настройках
@@ -222,24 +189,12 @@ def create_node_parser(config: AppConfig) -> HierarchicalNodeParser:
         config: конфигурация приложения.
 
     Возвращает:
-        Сплиттер, дающий родительские узлы и листья со связями между ними.
+        Сплиттер, дающий плоский список узлов со связями между соседями.
     """
-    tokenizer = create_embedding_tokenizer(config)
-    levels = {
-        PARENT_LEVEL: config.parent_chunk_size,
-        LEAF_LEVEL: config.chunk_size,
-    }
-
-    return HierarchicalNodeParser.from_defaults(
-        node_parser_ids = list(levels),
-        node_parser_map = {
-            level: SentenceSplitter(
-                chunk_size = chunk_size,
-                chunk_overlap = config.chunk_overlap,
-                tokenizer = tokenizer,
-            )
-            for level, chunk_size in levels.items()
-        },
+    return SentenceSplitter(
+        chunk_size = config.chunk_size,
+        chunk_overlap = config.chunk_overlap,
+        tokenizer = create_embedding_tokenizer(config),
     )
 
 
