@@ -118,7 +118,7 @@ class AppConfig:
             llm_model = local_model,
             judge_model = os.getenv("JUDGE_MODEL", "google/gemma-4-26b-a4b-qat") or local_model,
             llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.1")),
-            llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "4096")),
+            llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "16384")),
             llm_context_window = int(os.getenv("LLM_CONTEXT_WINDOW", "32768")),
             llm_timeout_seconds = float(os.getenv("LLM_TIMEOUT_SECONDS", "600")),
             llm_reasoning_effort = os.getenv("LOCAL_REASONING_EFFORT") or None,

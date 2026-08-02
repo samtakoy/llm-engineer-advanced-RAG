@@ -25,7 +25,7 @@ def print_table(runs: List[CaseRun]) -> None:
         None.
     """
     header = f"\n{'#':>2}  {'тип':<13} {'стр.':<5} {'факт':<6} {'RR':<5} {'разн.':<6} {'ссылки':<8} "
-    print(header + f"{'судья':<12} вопрос")
+    print(header + f"{'сек':<6} {'судья':<12} вопрос")
     for run in runs:
         metrics = run.metrics
         if run.case.expected_refusal:
@@ -40,7 +40,8 @@ def print_table(runs: List[CaseRun]) -> None:
         print(
             f"{run.case.number:>2}  {run.case.kind:<13} {hit:<5} {facts:<6} "
             f"{metrics.reciprocal_rank:<5.2f} {metrics.unique_pages:<6} {citations:<8} "
-            f"{format_verdict_scores(run.verdict):<12} {run.case.question[:38]}"
+            f"{metrics.seconds:<6.1f} {format_verdict_scores(run.verdict):<12} "
+            f"{run.case.question[:38]}"
         )
 
 
@@ -110,8 +111,12 @@ def format_count(measure: Measure) -> str:
         measure: итоговая метрика.
 
     Возвращает:
-        Строку вида «8 из 10 вопросов».
+        Строку вида «8 из 10 вопросов» либо готовую запись метрики, у которой счёт
+        складывается не из долей.
     """
+    if measure.note is not None:
+        return measure.note
+
     return f"{round(measure.scored, 2):g} из {measure.total} {measure.unit}"
 
 
@@ -175,13 +180,19 @@ def format_expected(case: Case) -> str:
     )
 
 
-def render_report(runs: List[CaseRun], summary: Dict[str, Measure], config: AppConfig) -> str:
+def render_report(
+    runs: List[CaseRun],
+    summary: Dict[str, Measure],
+    config: AppConfig,
+    modes: List[str],
+) -> str:
     """Собирает отчёт о прогоне в markdown.
 
     Аргументы:
         runs: результаты прогона.
         summary: итоговые метрики.
         config: конфигурация приложения.
+        modes: включённые в прогоне техники поиска.
 
     Возвращает:
         Текст отчёта.
@@ -191,7 +202,7 @@ def render_report(runs: List[CaseRun], summary: Dict[str, Measure], config: AppC
         "",
         " · ".join(
             f"{name}: `{value}`" if isinstance(value, str) else f"{name}: {value}"
-            for name, value in describe_settings(config = config, runs = runs).items()
+            for name, value in describe_settings(config = config, runs = runs, modes = modes).items()
         ),
         "",
         "## Итого",
@@ -239,6 +250,8 @@ def render_case(run: CaseRun) -> List[str]:
             "- попадание: "
             + ("да" if metrics.page_hit else f"{metrics.covered_groups} из {metrics.total_groups} групп")
         )
+
+    lines.append(f"- время: {metrics.seconds:.1f} с")
     if run.answer:
         lines.extend([
             "",
@@ -300,7 +313,7 @@ def render_verdict(verdict: Verdict) -> List[str]:
     return lines
 
 
-def describe_settings(config: AppConfig, runs: List[CaseRun]) -> dict:
+def describe_settings(config: AppConfig, runs: List[CaseRun], modes: List[str]) -> dict:
     """Собирает настройки, при которых снят прогон.
 
     Без них два снимка невозможно сравнить: непонятно, что именно менялось.
@@ -309,12 +322,16 @@ def describe_settings(config: AppConfig, runs: List[CaseRun]) -> dict:
     Аргументы:
         config: конфигурация приложения.
         runs: результаты прогона.
+        modes: включённые в прогоне техники поиска.
 
     Возвращает:
         Настройки прогона.
     """
     questions = "\n".join(run.case.question for run in runs)
     settings = {
+        # Техники поиска задаются флагами, а не конфигурацией, и без них снимки
+        # прогонов неразличимы: подмена одного другим прошла бы молча.
+        "modes": ", ".join(modes) if modes else "без техник",
         "llm_model": config.llm_model,
         "embedding_model": config.embedding_model,
         "chunk_size": config.chunk_size,
@@ -400,6 +417,7 @@ def save_report(
     summary: Dict[str, Measure],
     config: AppConfig,
     name: str,
+    modes: List[str],
 ) -> None:
     """Сохраняет отчёт в markdown и json.
 
@@ -408,6 +426,7 @@ def save_report(
         summary: итоговые метрики.
         config: конфигурация приложения.
         name: имя снимка, из него получаются имена файлов.
+        modes: включённые в прогоне техники поиска.
 
     Возвращает:
         None.
@@ -416,7 +435,7 @@ def save_report(
         SnapshotBelongsToOtherSettings: снимок с этим именем снят при других настройках.
     """
     REPORTS_DIR.mkdir(parents = True, exist_ok = True)
-    settings = describe_settings(config = config, runs = runs)
+    settings = describe_settings(config = config, runs = runs, modes = modes)
     check_snapshot_free(path = REPORTS_DIR / f"{name}.json", settings = settings)
 
     payload = {
@@ -440,7 +459,7 @@ def save_report(
         encoding = "utf-8",
     )
     (REPORTS_DIR / f"{name}.md").write_text(
-        render_report(runs = runs, summary = summary, config = config),
+        render_report(runs = runs, summary = summary, config = config, modes = modes),
         encoding = "utf-8",
     )
     print(f"\nОтчёт: {REPORTS_DIR / f'{name}.md'}")

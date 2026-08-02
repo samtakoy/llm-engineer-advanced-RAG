@@ -48,7 +48,10 @@ class Answer:
     sources: List[Source]
 
 
-def retrieval_top_k(config: AppConfig, reranker: SentenceTransformerRerank | None) -> int:
+def retrieval_top_k(
+    config: AppConfig,
+    reranker: SentenceTransformerRerank | None,
+) -> int:
     """Определяет, сколько фрагментов должен принести поиск.
 
     Аргументы:
@@ -121,36 +124,38 @@ def create_retriever(
     Возвращает:
         Поиск, готовый отдавать фрагменты по вопросу.
     """
-    vector_retriever = create_vector_retriever(
-        index = index,
-        filters = filters,
-        top_k = top_k,
-        mmr_threshold = mmr_threshold,
-    )
-    found: BaseRetriever = vector_retriever
+    branches: List[BaseRetriever] = [
+        create_vector_retriever(
+            index = index,
+            filters = filters,
+            top_k = top_k,
+            mmr_threshold = mmr_threshold,
+        ),
+    ]
 
     if lexical_index is not None:
-        # Ветки объединяются до склейки листьев: иначе в общий список попали бы
-        # и склеенный родитель от векторного поиска, и его же лист от поиска по
-        # словам — один и тот же текст двумя строками, занимающими два места.
-        found = QueryFusionRetriever(
-            retrievers = [
-                vector_retriever,
-                LexicalRetriever(
-                    lexical_index = lexical_index,
-                    filters = filters,
-                    top_k = top_k,
-                ),
-            ],
-            # Ранги двух выдач складываются по взаимному рангу: фрагмент, стоящий
-            # высоко в обеих, поднимается выше лидера одной из них.
-            mode = FUSION_MODES.RECIPROCAL_RANK,
-            similarity_top_k = top_k,
-            # Один запрос означает «искать ровно тем вопросом, что задан». Иначе
-            # объединение сперва просит модель придумать похожие формулировки.
-            num_queries = 1,
-            use_async = False,
+        branches.append(
+            LexicalRetriever(
+                lexical_index = lexical_index,
+                filters = filters,
+                top_k = top_k,
+            )
         )
+
+    # Ветки объединяются до склейки листьев: иначе в общий список попали бы
+    # и склеенный родитель от векторного поиска, и его же лист от поиска по
+    # словам — один и тот же текст двумя строками, занимающими два места.
+    found = branches[0] if len(branches) == 1 else QueryFusionRetriever(
+        retrievers = branches,
+        # Ранги выдач складываются по взаимному рангу: фрагмент, стоящий высоко
+        # в нескольких ветках, поднимается выше лидера любой одной из них.
+        mode = FUSION_MODES.RECIPROCAL_RANK,
+        similarity_top_k = top_k,
+        # Один запрос означает «искать ровно тем вопросом, что задан». Иначе
+        # объединение сперва просит модель придумать похожие формулировки.
+        num_queries = 1,
+        use_async = False,
+    )
 
     return AutoMergingRetriever(
         vector_retriever = found,
@@ -187,7 +192,10 @@ class RagEngine:
                 index = index,
                 config = config,
                 filters = filters,
-                top_k = retrieval_top_k(config = config, reranker = reranker),
+                top_k = retrieval_top_k(
+                    config = config,
+                    reranker = reranker,
+                ),
                 lexical_index = lexical_index,
                 mmr_threshold = mmr_threshold,
             ),

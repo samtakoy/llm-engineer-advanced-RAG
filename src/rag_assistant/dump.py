@@ -44,7 +44,7 @@ def write_corpus(
 
     return written
 
-
+# TODO в отдельный файл
 def group_nodes_by_source(nodes: Sequence[BaseNode]) -> Dict[str, List[BaseNode]]:
     """Группирует узлы по исходному файлу и раскладывает в порядке чтения.
 

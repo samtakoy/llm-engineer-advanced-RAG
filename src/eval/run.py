@@ -15,6 +15,7 @@
 """
 import argparse
 import sys
+import time
 from functools import partial
 from typing import List, Set
 
@@ -95,7 +96,10 @@ def retrieve_sources(
         index = index,
         config = config,
         filters = filters,
-        top_k = retrieval_top_k(config = config, reranker = reranker),
+        top_k = retrieval_top_k(
+            config = config,
+            reranker = reranker,
+        ),
         lexical_index = lexical_index,
         mmr_threshold = mmr_threshold,
     )
@@ -138,6 +142,10 @@ def run_case(
     Возвращает:
         Результат прогона вопроса.
     """
+    # Замеряется работа пайплайна: поиск, а в полном режиме ещё и ответ модели.
+    # Судья остаётся снаружи — он часть замера, а не того, что меряют.
+    started = time.perf_counter()
+
     if with_answer:
         # Движок собирается на вопрос, потому что фильтр у каждого вопроса свой.
         # Сборка — только обёртки над открытым индексом, без обращений к диску и сети.
@@ -170,6 +178,7 @@ def run_case(
         context = " ".join(source.text for source in sources),
         answer = answer,
         known_pages = known_pages,
+        seconds = time.perf_counter() - started,
     )
     # На вопрос-провокацию судью не зовём: его эталон — сам отказ, раскладывать такой
     # эталон на факты бессмысленно, а верность отказа уже меряет refusal_rate.
@@ -239,6 +248,25 @@ def parse_arguments() -> argparse.Namespace:
     return arguments
 
 
+def enabled_modes(arguments: argparse.Namespace) -> List[str]:
+    """Перечисляет техники поиска, включённые в прогоне.
+
+    Идут в настройки снимка: без них прогоны с разными флагами неразличимы,
+    и защита от затирания чужого снимка пропускает подмену.
+
+    Аргументы:
+        arguments: разобранные аргументы командной строки.
+
+    Возвращает:
+        Имена включённых техник в порядке применения.
+    """
+    return [
+        name
+        for name in ("filters", "rerank", "mmr", "hybrid")
+        if getattr(arguments, name)
+    ]
+
+
 def main() -> None:
     """Прогоняет набор вопросов и сохраняет отчёт.
 
@@ -261,20 +289,26 @@ def main() -> None:
 
     cases = load_cases(QUESTIONS_PATH)
     known_pages = load_known_pages(config)
-    judge = create_llm(config = config, model = config.judge_model) if arguments.judge else None
+    # Судья отвечает размеченным текстом, который разбирается вручную: схема ему не нужна.
+    judge = (
+        create_llm(config = config, model = config.judge_model, schema_constrained = False)
+        if arguments.judge
+        else None
+    )
     reranker = create_reranker(config) if arguments.rerank else None
     lexical_index = create_lexical_index(index) if arguments.hybrid else None
 
     runs = []
     for case in cases:
         print(f"[{case.number:>2}/{len(cases)}] {case.question[:60]}")
+        filters = build_filters(case.tags) if arguments.filters else None
         runs.append(
             run_case(
                 case = case,
                 index = index,
                 config = config,
                 known_pages = known_pages,
-                filters = build_filters(case.tags) if arguments.filters else None,
+                filters = filters,
                 reranker = reranker,
                 lexical_index = lexical_index,
                 mmr_threshold = config.mmr_threshold if arguments.mmr else None,
@@ -291,7 +325,13 @@ def main() -> None:
     print_table(runs)
     print_summary(summary, runs)
     try:
-        save_report(runs = runs, summary = summary, config = config, name = arguments.name)
+        save_report(
+            runs = runs,
+            summary = summary,
+            config = config,
+            name = arguments.name,
+            modes = enabled_modes(arguments),
+        )
     except SnapshotBelongsToOtherSettings as conflict:
         # Прогон уже сделан, терять его из-за занятого имени нельзя: показываем причину,
         # результаты выше в терминале остаются.

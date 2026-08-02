@@ -39,6 +39,9 @@ class Measure:
         total: сколько единиц участвовало в подсчёте.
         unit: что считалось — вопросы или ссылки.
         failed: номера вопросов, зачтённых не полностью.
+        note: готовая запись счёта вместо «сколько из скольких». Нужна метрикам,
+            у которых счёт складывается не из долей: у времени это секунды, и запись
+            «24,7 из 20 вопросов» была бы бессмыслицей.
     """
 
     value: float
@@ -46,6 +49,7 @@ class Measure:
     total: int
     unit: str
     failed: List[int]
+    note: str | None = None
 
 
 @dataclass(frozen = True)
@@ -71,6 +75,9 @@ class CaseMetrics:
         outside_context_citations: ссылки на существующие страницы, которых не было
             в переданном модели контексте.
         refused: True — модель ответила «не знаю», None — ответа не было.
+        seconds: сколько секунд заняла работа пайплайна на этом вопросе. В режиме
+            retrieval это цена поиска, в режиме full — поиск вместе с ответом модели.
+            Время судьи сюда не входит: он часть замера, а не пайплайна.
     """
 
     page_hit: bool
@@ -87,6 +94,7 @@ class CaseMetrics:
     invented_citations: int
     outside_context_citations: int
     refused: bool | None
+    seconds: float
 
 
 def count_covered_groups(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) -> int:
@@ -259,6 +267,7 @@ def measure(
     context: str,
     answer: str,
     known_pages: Set[Page],
+    seconds: float,
 ) -> CaseMetrics:
     """Считает метрики одного вопроса.
 
@@ -268,6 +277,7 @@ def measure(
         context: склеенный текст найденных фрагментов.
         answer: текст ответа модели, пустой в режиме проверки только поиска.
         known_pages: все страницы, лежащие в индексе.
+        seconds: сколько заняла работа пайплайна на этом вопросе.
 
     Возвращает:
         Метрики вопроса.
@@ -292,6 +302,7 @@ def measure(
             1 for page in citations if page in known_pages and page not in pages_in_context
         ),
         refused = REFUSAL_MARKER in answer.lower() if answer else None,
+        seconds = seconds,
     )
 
 
@@ -308,9 +319,10 @@ def summarize(
         verdicts: разборы судьи по каждому вопросу, None — судья не вызывался.
 
     Возвращает:
-        Итоговые метрики: попадание в эталонные страницы, средний обратный ранг,
-        честность ссылок, отказы и оценки судьи. Уникальность страниц сюда не входит:
-        она нужна для оценки эффекта MMR и видна по каждому вопросу в таблице.
+        Итоговые метрики: попадание в эталонные страницы, доля покрытых групп эталона,
+        средний обратный ранг, честность ссылок, отказы и оценки судьи. Уникальность
+        страниц сюда не входит: она нужна для оценки эффекта MMR и видна по каждому
+        вопросу в таблице.
     """
     answerable = [
         (case, metrics)
@@ -364,8 +376,30 @@ def summarize(
         )
 
     summary.update(judge_summary(cases = cases, verdicts = verdicts))
+    summary["seconds_per_question"] = collect_duration(measurements)
 
     return summary
+
+
+def collect_duration(measurements: Sequence[CaseMetrics]) -> Measure:
+    """Сводит время, потраченное пайплайном на один вопрос.
+
+    Аргументы:
+        measurements: метрики по каждому вопросу.
+
+    Возвращает:
+        Метрику со средним временем на вопрос в секундах.
+    """
+    spent = sum(metrics.seconds for metrics in measurements)
+
+    return Measure(
+        value = share(spent, len(measurements)),
+        scored = spent,
+        total = len(measurements),
+        unit = "вопросов",
+        failed = [],
+        note = f"{spent:.1f} с на {len(measurements)} вопросов",
+    )
 
 
 def collect(scores: Sequence[tuple], unit: str) -> Measure:

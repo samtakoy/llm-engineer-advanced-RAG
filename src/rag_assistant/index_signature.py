@@ -4,7 +4,7 @@
 смена модели эмбеддингов или размера чанка ничем себя не проявляет: если размерность
 вектора совпала, приложение поднимется на старых векторах и будет молча отвечать мимо.
 """
-from typing import Dict
+from typing import Dict, Mapping, Tuple
 
 from chromadb.api.models.Collection import Collection
 
@@ -49,6 +49,44 @@ def format_document_metadata() -> str:
     )
 
 
+def find_signature_changes(
+    stored: Mapping[str, str],
+    config: AppConfig,
+) -> Dict[str, Tuple[str | None, str]]:
+    """Ищет настройки, разошедшиеся с сохранённой подписью.
+
+    Аргументы:
+        stored: подпись, записанная при сборке.
+        config: конфигурация приложения.
+
+    Возвращает:
+        Расхождения по имени настройки: «что записано при сборке, что в конфигурации».
+        Пусто — настройки совпали. Записанное значение равно None, если настройки
+        в подписи не было вовсе.
+    """
+    return {
+        key: (stored.get(key), value)
+        for key, value in build_signature(config).items()
+        if stored.get(key) != value
+    }
+
+
+def describe_signature_changes(changed: Mapping[str, Tuple[str | None, str]]) -> str:
+    """Описывает расхождения настроек для сообщения пользователю.
+
+    Аргументы:
+        changed: расхождения, найденные find_signature_changes.
+
+    Возвращает:
+        Перечисление вида «chunk_size: собрано на «480», в конфигурации «512»».
+    """
+    return "; ".join(
+        f"{key}: собрано на «{was if was is not None else 'настройке без подписи'}», "
+        f"в конфигурации «{now}»"
+        for key, (was, now) in sorted(changed.items())
+    )
+
+
 def verify_signature(collection: Collection, config: AppConfig) -> None:
     """Сверяет текущие настройки с подписью готового индекса.
 
@@ -62,22 +100,12 @@ def verify_signature(collection: Collection, config: AppConfig) -> None:
     Исключения:
         IndexSettingsChanged: хотя бы одна настройка разошлась с подписью.
     """
-    stored = collection.metadata or {}
-    changed = {
-        key: (stored.get(key), value)
-        for key, value in build_signature(config).items()
-        if stored.get(key) != value
-    }
+    changed = find_signature_changes(stored = collection.metadata or {}, config = config)
 
     if not changed:
         return
 
-    details = "; ".join(
-        f"{key}: индекс построен на «{was if was is not None else 'настройке без подписи'}», "
-        f"в конфигурации «{now}»"
-        for key, (was, now) in sorted(changed.items())
-    )
     raise IndexSettingsChanged(
-        f"Индекс не соответствует настройкам ({details}). "
+        f"Индекс не соответствует настройкам ({describe_signature_changes(changed)}). "
         f"Перестроить: uv run main.py reindex",
     )

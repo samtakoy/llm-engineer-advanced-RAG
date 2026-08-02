@@ -21,6 +21,29 @@ class TextTooLongForModel(RuntimeError):
     """Узел не помещается в окно модели: лишнее было бы молча отброшено."""
 
 
+class SchemaConstrainedLLM(OpenAILike):
+    """Клиент, требующий структурированный ответ схемой, а не вызовом инструмента.
+
+    Путей к структурированному ответу два. Первый — описать схему инструментом
+    и попросить его вызвать: сервер модель ничем не ограничивает, она пишет JSON
+    свободно и на длинном ответе рвёт его посередине. Второй — `response_format`
+    с json_schema: LM Studio ограничивает генерацию грамматикой схемы, и ответ
+    не может оказаться ни невалидным JSON, ни значением вне перечисления.
+
+    Второй путь в llama-index реализован, но включается только для моделей
+    из зашитого списка OpenAI (`is_json_schema_supported`), а локальная модель
+    в него по имени не попадает никогда. Проверка подменяется здесь.
+    """
+
+    def _should_use_structure_outputs(self) -> bool:
+        """Сообщает, что сервер умеет ограничивать генерацию схемой.
+
+        Возвращает:
+            True всегда: класс и создаётся для серверов, которые это умеют.
+        """
+        return True
+
+
 def model_window(model) -> int:
     """Определяет, сколько токенов модель физически способна прочитать.
 
@@ -46,13 +69,16 @@ def select_device() -> str:
     return "cpu"
 
 
-def create_llm(config: AppConfig, model: str) -> OpenAILike:
+def create_llm(config: AppConfig, model: str, schema_constrained: bool) -> OpenAILike:
     """Создаёт клиент к локальному OpenAI-совместимому серверу.
 
     Аргументы:
         config: конфигурация приложения.
         model: идентификатор модели на сервере. Задаётся явно, потому что
             отвечать и судить могут разные модели.
+        schema_constrained: True — просить структурированный ответ схемой,
+            чтобы сервер ограничил генерацию грамматикой. Нужно там, где ответ
+            модели разбирается программой, а не читается человеком.
 
     Возвращает:
         Клиент OpenAILike, настроенный на локальную модель.
@@ -61,7 +87,9 @@ def create_llm(config: AppConfig, model: str) -> OpenAILike:
     if config.llm_reasoning_effort:
         additional_kwargs["reasoning_effort"] = config.llm_reasoning_effort
 
-    return OpenAILike(
+    client_class = SchemaConstrainedLLM if schema_constrained else OpenAILike
+
+    return client_class(
         model = model,
         api_base = config.llm_base_url,
         api_key = config.llm_api_key,
@@ -224,6 +252,11 @@ def configure_global_settings(config: AppConfig) -> None:
     Возвращает:
         None.
     """
-    Settings.llm = create_llm(config = config, model = config.llm_model)
+    # Ответы читает человек, схемой их не ограничивают.
+    Settings.llm = create_llm(
+        config = config,
+        model = config.llm_model,
+        schema_constrained = False,
+    )
     Settings.embed_model = create_embedding_model(config)
     Settings.node_parser = create_node_parser(config)
