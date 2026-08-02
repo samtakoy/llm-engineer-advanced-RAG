@@ -9,9 +9,6 @@ load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Написания, которыми в .env включают настройку-переключатель.
-TRUE_VALUES = ("1", "true", "yes", "on")
-
 
 def read_optional_float(value: str | None) -> float | None:
     """Читает необязательную дробную настройку.
@@ -62,7 +59,6 @@ class AppConfig:
         candidate_top_k: сколько фрагментов забирает поиск до реранкера. Реранкер
             переставляет только то, что ему принесли, поэтому кандидатов берётся
             больше, чем нужно в ответе. Без реранкера значение не используется.
-        hybrid_search: True — искать векторно и по словам сразу, объединяя выдачи.
         mmr_threshold: насколько выдача жертвует точностью ради разнообразия:
             единица — обычный поиск по близости, ноль — отбор максимально непохожих
             друг на друга фрагментов. None — разнообразие не учитывается.
@@ -91,7 +87,6 @@ class AppConfig:
     chunk_overlap: int
     top_k: int
     candidate_top_k: int
-    hybrid_search: bool
     mmr_threshold: float | None
 
     @classmethod
@@ -137,6 +132,5 @@ class AppConfig:
             chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200")),
             top_k = int(os.getenv("TOP_K", "5")),
             candidate_top_k = int(os.getenv("CANDIDATE_TOP_K", "20")),
-            hybrid_search = os.getenv("HYBRID_SEARCH", "false").strip().lower() in TRUE_VALUES,
             mmr_threshold = read_optional_float(os.getenv("MMR_THRESHOLD")),
         )
