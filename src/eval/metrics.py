@@ -63,6 +63,8 @@ class CaseMetrics:
         covered_groups: сколько групп эталона покрыто.
         total_groups: сколько групп эталона всего.
         reciprocal_rank: единица, делённая на место первой эталонной страницы в выдаче.
+        relevant_pages: сколько страниц выдачи входит в эталон.
+        retrieved_pages: сколько страниц выдача принесла всего.
         unique_pages: сколько разных страниц в выдаче, мера её избыточности.
         snippets_found: сколько эталонных подстрок дошло до модели в тексте выдачи.
         snippets_total: сколько эталонных подстрок у вопроса всего.
@@ -85,6 +87,8 @@ class CaseMetrics:
     covered_groups: int
     total_groups: int
     reciprocal_rank: float
+    relevant_pages: int
+    retrieved_pages: int
     unique_pages: int
     snippets_found: int
     snippets_total: int
@@ -123,6 +127,25 @@ def is_hit(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) 
         True, если из каждой группы нашлась хотя бы одна страница.
     """
     return count_covered_groups(retrieved, expected_pages) == len(expected_pages)
+
+
+def count_relevant_pages(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) -> int:
+    """Считает страницы выдачи, входящие в эталон.
+
+    Считаются места в выдаче, а не разные страницы: если одна и та же эталонная
+    страница пришла двумя фрагментами, оба места заняты по делу. Фрагмент со сшитой
+    таблицей приносит обе свои страницы и засчитывается по каждой отдельно.
+
+    Аргументы:
+        retrieved: страницы, которые вернул поиск, в порядке выдачи.
+        expected_pages: группы эталонных страниц.
+
+    Возвращает:
+        Число мест выдачи, занятых эталонной страницей.
+    """
+    expected = {page for group in expected_pages for page in group}
+
+    return sum(1 for page in retrieved if page in expected)
 
 
 def reciprocal_rank(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) -> float:
@@ -291,6 +314,8 @@ def measure(
         covered_groups = count_covered_groups(retrieved, case.expected_pages),
         total_groups = len(case.expected_pages),
         reciprocal_rank = reciprocal_rank(retrieved, case.expected_pages),
+        relevant_pages = count_relevant_pages(retrieved, case.expected_pages),
+        retrieved_pages = len(retrieved),
         unique_pages = len(pages_in_context),
         snippets_found = count_found_snippets(context, case.expected_snippets),
         snippets_total = len(case.expected_snippets),
@@ -320,7 +345,8 @@ def summarize(
 
     Возвращает:
         Итоговые метрики: попадание в эталонные страницы, доля покрытых групп эталона,
-        средний обратный ранг, честность ссылок, отказы и оценки судьи. Уникальность
+        средний обратный ранг, доля мест выдачи, занятых эталоном, честность ссылок,
+        отказы и оценки судьи. Уникальность
         страниц сюда не входит: она нужна для оценки эффекта MMR и видна по каждому
         вопросу в таблице.
     """
@@ -349,6 +375,7 @@ def summarize(
             [(case.number, metrics.reciprocal_rank) for case, metrics in answerable],
             unit = "вопросов",
         ),
+        "precision@k": collect_precision(answerable),
     }
     # Строже, чем page_hit_rate: страница может найтись, а нужный её фрагмент — нет.
     with_snippets = [
@@ -399,6 +426,40 @@ def collect_duration(measurements: Sequence[CaseMetrics]) -> Measure:
         unit = "вопросов",
         failed = [],
         note = f"{spent:.1f} с на {len(measurements)} вопросов",
+    )
+
+
+def collect_precision(answerable: Sequence[tuple]) -> Measure:
+    """Сводит долю мест выдачи, занятых эталонными страницами.
+
+    Считается по местам выдачи, а не по вопросам: метрика отвечает на вопрос
+    «сколько из переданного модели было по делу», и вопрос с эталоном в две страницы
+    не должен весить столько же, сколько вопрос с эталоном в одну.
+
+    Парная к fact_hit_rate: тот меряет, сколько нужного дошло до модели, эта —
+    сколько лишнего дошло вместе с ним. Потолок задан эталоном: при TOP_K = 8
+    и эталоне в одну страницу выше 0.125 значение подняться не может, поэтому
+    сравнивать её осмысленно только между прогонами на одном наборе вопросов.
+
+    Аргументы:
+        answerable: пары «вопрос, метрики» по вопросам, у которых есть эталон.
+
+    Возвращает:
+        Метрику. Не зачтёнными считаются вопросы, где выдача не принесла ни одной
+        эталонной страницы: доля меньше единицы здесь норма, а не сбой.
+    """
+    relevant = sum(metrics.relevant_pages for _, metrics in answerable)
+    total = sum(metrics.retrieved_pages for _, metrics in answerable)
+
+    if not total:
+        return empty_measure(unit = "мест выдачи")
+
+    return Measure(
+        value = share(relevant, total),
+        scored = relevant,
+        total = total,
+        unit = "мест выдачи",
+        failed = [case.number for case, metrics in answerable if not metrics.relevant_pages],
     )
 
 
