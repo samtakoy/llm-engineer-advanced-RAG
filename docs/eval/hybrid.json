@@ -1,0 +1,1418 @@
+{
+  "settings": {
+    "modes": "rerank, hybrid",
+    "llm_model": "google/gemma-4-e2b",
+    "embedding_model": "BAAI/bge-m3",
+    "chunk_size": 1024,
+    "chunk_overlap": 200,
+    "top_k": 5,
+    "questions": "20 шт., 0df7e70f",
+    "prompt": "f1d7bd54",
+    "judge_model": "google/gemma-4-26b-a4b-qat"
+  },
+  "summary": {
+    "page_hit_rate": {
+      "value": 0.6842105263157895,
+      "scored": 13.0,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [
+        6,
+        11,
+        12,
+        17,
+        18,
+        20
+      ],
+      "note": null
+    },
+    "mrr": {
+      "value": 0.8333333333333334,
+      "scored": 15.833333333333334,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [
+        3,
+        11,
+        12,
+        19
+      ],
+      "note": null
+    },
+    "precision@k": {
+      "value": 0.4,
+      "scored": 38,
+      "total": 95,
+      "unit": "фрагментов",
+      "failed": [],
+      "note": null
+    },
+    "fact_hit_rate": {
+      "value": 0.8947368421052632,
+      "scored": 17.0,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [
+        6,
+        12,
+        20
+      ],
+      "note": null
+    },
+    "citation_format": {
+      "value": 0.0,
+      "scored": 0,
+      "total": 43,
+      "unit": "ссылок",
+      "failed": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "note": null
+    },
+    "citation_honesty": {
+      "value": 0.9069767441860465,
+      "scored": 39,
+      "total": 43,
+      "unit": "ссылок",
+      "failed": [
+        3,
+        17
+      ],
+      "note": null
+    },
+    "answered_rate": {
+      "value": 0.8947368421052632,
+      "scored": 17.0,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [
+        11,
+        12
+      ],
+      "note": null
+    },
+    "refusal_rate": {
+      "value": 1.0,
+      "scored": 1.0,
+      "total": 1,
+      "unit": "вопросов",
+      "failed": [],
+      "note": null
+    },
+    "judge_parsed": {
+      "value": 1.0,
+      "scored": 19.0,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [],
+      "note": null
+    },
+    "faithfulness": {
+      "value": 0.9298245614035089,
+      "scored": 17.666666666666668,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [
+        5,
+        9,
+        18
+      ],
+      "note": null
+    },
+    "correctness": {
+      "value": 0.4473684210526316,
+      "scored": 8.5,
+      "total": 19,
+      "unit": "вопросов",
+      "failed": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        8,
+        9,
+        11,
+        12,
+        13,
+        15,
+        16,
+        17,
+        18,
+        20
+      ],
+      "note": null
+    },
+    "seconds_per_question": {
+      "value": 3.6368362166467705,
+      "scored": 72.73672433293541,
+      "total": 20,
+      "unit": "вопросов",
+      "failed": [],
+      "note": "72.7 с на 20 вопросов"
+    }
+  },
+  "cases": [
+    {
+      "number": 1,
+      "question": "Какую долю выручки составила EBITDA группы в 2025 году?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 10",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11",
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "FY2024_Issuer's report.pdf, стр. 18",
+        "FY2024_Issuer's report.pdf, стр. 19"
+      ],
+      "answer": "EBITDA Группы в евро составила 118,5 млн. евро [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 2.7818001249979716
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "EBITDA Группы в евро составила 118,5 млн. евро",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "40,9%",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент предоставил абсолютное значение EBITDA вместо требуемой доли выручки (рентабельности), которая составляет 40,9%.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 2,
+      "question": "Сколько пациентов может одновременно лежать в стационаре «Семейного доктора»?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 70",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 71",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 15",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 16"
+      ],
+      "answer": "22 660 человек. [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 8]",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 2.707716791992425
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Количество госпитализаций в стационар составило 22 660 человек",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "78 коек",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент перепутал количество госпитализаций с вместимостью стационара в койках.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 3,
+      "question": "Сколько раз пациенты обращались за амбулаторной помощью по группе за весь 2025 год?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 17",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 15",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 16"
+      ],
+      "answer": "359 443 раза [Отчет эмитента МКПАО ЮМГ 12м2025, 8]",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 0.3333333333333333,
+        "relevant_fragments": 1,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 1,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 2.8166092499886872
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Количество поликлинических визитов составило 359 443.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "359 443",
+            "holds": true
+          },
+          {
+            "text": "визита",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент указал число, но не указал единицу измерения (визиты), которая является важной частью эталонного ответа.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.5
+      }
+    },
+    {
+      "number": 4,
+      "question": "Во сколько в рублях обходится одна госпитализация?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 6",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9"
+      ],
+      "answer": "Средний чек на услуги стационара в ноябре – декабре 2025 года составил 154 175 рублей [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 3,
+        "retrieved_fragments": 5,
+        "unique_pages": 3,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 2.7174210419907467
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Средний чек на услуги стационара в ноябре – декабре 2025 года составил 154 175 рублей",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "154 175 рублей",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует эталонному и подтверждается предоставленным контекстом.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 5,
+      "question": "Группа стала зарабатывать больше или меньше по EBITDA в евро за 2023, 2024 и 2025 годы?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 10",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 11",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 18",
+        "FY2024_Issuer's report.pdf, стр. 19"
+      ],
+      "answer": "EBITDA Группы в евро составила 115,4 млн евро в 2024 году и 118,5 млн евро в 2025 году [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9]. В 2023 году показатель составил 115,4 млн евро [FY2024_Issuer's report.pdf, 7].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 2,
+        "total_groups": 2,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 4,
+        "retrieved_fragments": 5,
+        "unique_pages": 4,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 2,
+        "formatted_citations": 0,
+        "malformed_citations": 2,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 3.504203582997434
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "EBITDA в евро составила 115,4 млн евро в 2024 году.",
+            "holds": true
+          },
+          {
+            "text": "EBITDA в евро составила 118,5 млн евро в 2025 году.",
+            "holds": true
+          },
+          {
+            "text": "EBITDA в евро составила 115,4 млн евро в 2023 году.",
+            "holds": false
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "115,9 млн евро в 2023",
+            "holds": false
+          },
+          {
+            "text": "115,4 млн евро в 2024",
+            "holds": true
+          },
+          {
+            "text": "118,5 млн евро в 2025",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ассистент допустил фактическую ошибку в значении EBITDA за 2023 год (указал 115,4 вместо 115,9 млн евро).",
+        "error": "",
+        "faithfulness": 0.6666666666666666,
+        "correctness": 0.6666666666666666
+      }
+    },
+    {
+      "number": 6,
+      "question": "Кто из кредиторов ограничивает компанию условиями по долгу и какие это условия?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 37",
+        "FY2024_Issuer's report.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 10",
+        "FY2024_Issuer's report.pdf, стр. 22",
+        "FY2024_Issuer's report.pdf, стр. 23",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 32",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 33",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 15"
+      ],
+      "answer": "Основными кредиторами, имеющими для эмитента существенное значение, являются:\n*   Публичное акционерное общество \"Сбербанк России\" (ПАО \"Сбербанк\") [FY2024_Issuer's report.pdf, 9]\n*   Публичное акционерное общество \"Банк ВТБ\" (ПАО \"Банк ВТБ\") [FY2024_Issuer's report.pdf, 9]\n\nДоля основного кредитора в объеме кредиторской задолженности:\n*   \"Публичное акционерное общество \"Сбербанк России\"\" составляет 18.1% [FY2024_Issuer's report.pdf, 9].\n*   \"Публичное акционерное общество \"Банк ВТБ\"\" составляет 81.2% [FY2024_Issuer's report.pdf, 9].\n\nЗадолженность этих кредиторов не является просроченной [FY2024_Issuer's report.pdf, 9].\n\nИные кредиторы, имеющие для эмитента существенное значение, отсутствуют [FY2024_Issuer's report.pdf, 9].",
+      "metrics": {
+        "page_hit": false,
+        "covered_groups": 1,
+        "total_groups": 2,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 1,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 2,
+        "citations": 6,
+        "formatted_citations": 0,
+        "malformed_citations": 6,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 5.257096250003087
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Основным кредитором является ПАО «Сбербанк России»",
+            "holds": true
+          },
+          {
+            "text": "Основным кредитором является ПАО «Банк ВТБ»",
+            "holds": true
+          },
+          {
+            "text": "Доля задолженности перед ПАО «Сбербанк России» составляет 18.1%",
+            "holds": true
+          },
+          {
+            "text": "Доля задолженности перед ПАО «Банк ВТБ» составляет 81.2%",
+            "holds": true
+          },
+          {
+            "text": "Задолженность не является просроченной",
+            "holds": true
+          },
+          {
+            "text": "Иные существенные кредиторы отсутствуют",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "Райффайзенбанк является кредитором, ограничивающим условиями",
+            "holds": false
+          },
+          {
+            "text": "Сбербанк является кредитором, ограничивающим условиями",
+            "holds": true
+          },
+          {
+            "text": "Отношение чистого долга к EBITDA не более 3,0",
+            "holds": false
+          },
+          {
+            "text": "Коэффициент автономии не менее 20%",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент перечислил кредиторов и их доли из финансового раздела, но не указал конкретные ограничивающие условия (ковенанты) по долгу, которые требовались в вопросе.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.25
+      }
+    },
+    {
+      "number": 7,
+      "question": "Какая частная клиника в России зарабатывает больше всех и сколько?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 38",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 32",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 33"
+      ],
+      "answer": "ГК«Медси» зарабатывает 50,3 млрд руб. [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 7]",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 3,
+        "retrieved_fragments": 5,
+        "unique_pages": 3,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 2.265201916990918
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "ГК «Медси» зарабатывает 50,3 млрд руб.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "ГК «Медси»",
+            "holds": true
+          },
+          {
+            "text": "выручка 50,3 млрд рублей",
+            "holds": true
+          }
+        ],
+        "reasoning": "Расхождений между ответом ассистента и эталонным ответом нет.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 8,
+      "question": "За счёт чего компания рассчитывает расти дальше?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 30",
+        "FY2024_Issuer's report.pdf, стр. 35",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 33",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 34",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 34",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 35"
+      ],
+      "answer": "Компания рассчитывает расти за счёт следующих факторов:\n\n*   **Рост объема услуг:** Способствовать дальнейшему росту объема услуг, оказываемых компаниями Группы в сегменте премиум-класса в рамках существующих медицинских специализаций, и сохранять лидерство на рынке по качеству медицинского обслуживания [FY2024_Issuer's report.pdf, 14].\n*   **Расширение практики:** Продолжать расширять лучшую в данном классе частную практику лечения онкологических заболеваний и начать экспансию на региональный рынок в данном направлении [FY2024_Issuer's report.pdf, 14].\n*   **Повышение операционной эффективности:** Продолжать увеличивать рост выручки и прибыльности за счет повышения операционной эффективности, повышения уровня использования активов и увеличения контроля над расходами [FY2024_Issuer's report.pdf, 14].\n*   **Расширение портфеля услуг:** Продолжение роста в рамках существующих специализаций с расширением действующих медицинских учреждений, разработкой новых услуг и инвестициями в медицинские технологии для расширения существующего портфеля медицинских услуг [FY2024_Issuer's report.pdf, 14].\n*   **Увеличение среднего чека и валовой прибыли:** Стремление к дальнейшему расширению спектра услуг, особенно в отношении сложных медицинских услуг с высокой добавленной стоимостью, что приведет к увеличению количества амбулаторных и стационарных пациентов и росту среднего чека, а также будет способствовать увеличению валовой прибыли Группы [FY2024_Issuer's report.pdf, 14].\n*   **Развитие услуг по ОМС:** Развитие услуг по обязательной медицинской страховке (ОМС), которое покрывает высокотехнологичную медицину, услуги по родовспоможению и реабилитации, ожидается как фактор, способствующий росту прибыли [FY2024_Issuer's report.pdf, 14].\n*   **Рост родильного дома:** Ожидается продолжение роста родильного дома, открытого в 2017 году [FY2024_Issuer's report.pdf, 14].\n*   **Привлечение медицинских туристов:** Планируется привлекать медицинских туристов для предложения лечения сложных медицинских случаев [FY2024_Issuer's report.pdf, 14].\n*   **Развитие в рамках ГЧП:** Продолжение расширения бизнеса через государственно-частное партнерство и предоставление передовых технологий по оказанию медицинских услуг пациентам, застрахованным по программам ОМС Москвы и Московской области [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 30].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 9,
+        "formatted_citations": 0,
+        "malformed_citations": 9,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 8.332612999991397
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Рост объема услуг в сегменте премиум-класса в рамках существующих специализаций.",
+            "holds": true
+          },
+          {
+            "text": "Сохранение лидерства на рынке по качеству медицинского обслуживания.",
+            "holds": true
+          },
+          {
+            "text": "Расширение частной практики лечения онкологических заболеваний.",
+            "holds": true
+          },
+          {
+            "text": "Экспансия в области онкологии на региональный рынок.",
+            "holds": true
+          },
+          {
+            "text": "Увеличение выручки и прибыльности за счет операционной эффективности, использования активов и контроля расходов.",
+            "holds": true
+          },
+          {
+            "text": "Расширение портфеля услуг через развитие медицинских учреждений, новые услуги и инвестиции в технологии.",
+            "holds": true
+          },
+          {
+            "text": "Увеличение количества пациентов и среднего чека за счет сложных высокотехнологичных услуг.",
+            "holds": true
+          },
+          {
+            "text": "Развитие услуг по ОМС (высокотехнологичная медицина, родовспоможение, реабилитация) как фактор роста прибыли.",
+            "holds": true
+          },
+          {
+            "text": "Продолжение роста родильного дома (открыт в 2017 г.).",
+            "holds": true
+          },
+          {
+            "text": "Привлечение медицинских туристов для лечения сложных случаев.",
+            "holds": true
+          },
+          {
+            "text": "Развитие региональных учреждений через государственно-частное партнерство и услуги по ОМС Москвы/Московской области.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "Родильный дом EMC",
+            "holds": true
+          },
+          {
+            "text": "реабилитационный центр в Жуковке",
+            "holds": false
+          },
+          {
+            "text": "онкологические центры в Москве и других регионах России",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ассистент предоставил подробный список стратегических факторов роста, однако упустил конкретные объекты (реабилитационный центр), указанные в эталонном ответе.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.6666666666666666
+      }
+    },
+    {
+      "number": 9,
+      "question": "Какого размера онкоклиника при МОНИКИ — сколько мест и какая площадь?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 15",
+        "FY2024_Issuer's report.pdf, стр. 16",
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "FY2024_Issuer's report.pdf, стр. 15",
+        "FY2024_Issuer's report.pdf, стр. 35",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 30",
+        "FY2024_Issuer's report.pdf, стр. 60",
+        "FY2024_Issuer's report.pdf, стр. 61"
+      ],
+      "answer": "Клиника на базе института МОНИКИ рассчитана на [27 д 4 655 д М] коек и занимает [кваратных метров] площади [FY2024_Issuer's report.pdf, 15].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 3.007009124994511
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Клиника рассчитана на 27 коек",
+            "holds": true
+          },
+          {
+            "text": "Площадь клиники составляет 4 655 квадратных метров",
+            "holds": false
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "27 коек",
+            "holds": true
+          },
+          {
+            "text": "площадь 4 655 квадратных метров",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент неверно интерпретировал текст, перепутав количество коек и площадь из-за наличия опечаток в исходном контексте.",
+        "error": "",
+        "faithfulness": 0.5,
+        "correctness": 0.5
+      }
+    },
+    {
+      "number": 10,
+      "question": "Сколько стоит первичный приём кардиолога в ЕМС?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 69",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 70",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 58",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 59",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 61",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 62",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 6"
+      ],
+      "answer": "Я не знаю",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 0,
+        "total_groups": 0,
+        "reciprocal_rank": 0.0,
+        "relevant_fragments": 0,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 0,
+        "snippets_total": 0,
+        "citations": 0,
+        "formatted_citations": 0,
+        "malformed_citations": 0,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": true,
+        "seconds": 2.662960582994856
+      },
+      "verdict": null
+    },
+    {
+      "number": 11,
+      "question": "Чего компания опасается в денежной части — какие угрозы она перечисляет?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 27",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 37",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 36",
+        "FY2024_Issuer's report.pdf, стр. 27",
+        "FY2024_Issuer's report.pdf, стр. 28",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 31"
+      ],
+      "answer": "Я не знаю",
+      "metrics": {
+        "page_hit": false,
+        "covered_groups": 0,
+        "total_groups": 1,
+        "reciprocal_rank": 0.0,
+        "relevant_fragments": 0,
+        "retrieved_fragments": 5,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 0,
+        "formatted_citations": 0,
+        "malformed_citations": 0,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": true,
+        "seconds": 1.9972898340056418
+      },
+      "verdict": {
+        "claims": [],
+        "expected_facts": [
+          {
+            "text": "валютный риск",
+            "holds": false
+          },
+          {
+            "text": "процентный риск",
+            "holds": false
+          },
+          {
+            "text": "кредитный риск",
+            "holds": false
+          },
+          {
+            "text": "риск ликвидности",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент полностью отказался отвечать на вопрос, не предоставив никаких утверждений.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 12,
+      "question": "Насколько компания приблизилась к предельной долговой нагрузке, которую поставили кредиторы?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 17",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 15",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 18",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 14",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 13"
+      ],
+      "answer": "Я не знаю",
+      "metrics": {
+        "page_hit": false,
+        "covered_groups": 0,
+        "total_groups": 2,
+        "reciprocal_rank": 0.0,
+        "relevant_fragments": 0,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 0,
+        "snippets_total": 2,
+        "citations": 0,
+        "formatted_citations": 0,
+        "malformed_citations": 0,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": true,
+        "seconds": 3.7174872909963597
+      },
+      "verdict": {
+        "claims": [],
+        "expected_facts": [
+          {
+            "text": "Отношение чистого долга к EBITDA составляет 0,95х",
+            "holds": false
+          },
+          {
+            "text": "установленный банками предел не более 3,0",
+            "holds": false
+          },
+          {
+            "text": "запас есть",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент полностью отказался от ответа, в то время как в эталонном ответе содержатся конкретные финансовые показатели, отсутствующие в предоставленном контексте.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 13,
+      "question": "Сколько человек группа положила в стационар в 2025 году и почему лечение подорожало?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 14",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 33",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 34",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 36"
+      ],
+      "answer": "Количество госпитализаций в стационар составило 1 281, что сопоставимо с уровнем 2024 года [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9]. Средний чек на услуги стационара повысился на 25% (со 122 873 до 154 175 рублей) за счет увеличения количества более сложных операций и внедрения новых высокотехнологичных (и более дорогих) методов лечения [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 2,
+        "total_groups": 2,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 2,
+        "formatted_citations": 0,
+        "malformed_citations": 2,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 3.652759499993408
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Количество госпитализаций составило 1 281",
+            "holds": true
+          },
+          {
+            "text": "Средний чек на услуги стационара повысился на 25%",
+            "holds": true
+          },
+          {
+            "text": "Средний чек в рублях изменился со 122 873 до 154 175",
+            "holds": true
+          },
+          {
+            "text": "Рост среднего чека произошел за счет увеличения количества сложных операций и внедрения новых высокотехнологичных методов лечения",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "22 660 госпитализаций",
+            "holds": false
+          },
+          {
+            "text": "рост на 3,5%",
+            "holds": false
+          },
+          {
+            "text": "Средний чек вырос на 7,4%",
+            "holds": false
+          },
+          {
+            "text": "за счёт увеличения сложности проводимых оперативных вмешательств",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ассистент использовал данные из неверного фрагмента текста (первого, где указано 1281 госпитализация), в то время как в контексте есть актуальные данные для 2025 года (22 660 госпитализаций).",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.25
+      }
+    },
+    {
+      "number": 14,
+      "question": "Сколько пациентов приходило в поликлинику в 2023 году?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 6",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9"
+      ],
+      "answer": "386 490 [FY2024_Issuer's report.pdf, 6]",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 1,
+        "retrieved_fragments": 5,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 1.8942844999983208
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Количество пациентов (визитов) в 2023 году составило 386 490",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "386 490 визитов",
+            "holds": true
+          }
+        ],
+        "reasoning": "Ответ ассистента полностью соответствует предоставленным данным и эталонному ответу, различие заключается только в наличии технической пометки источника.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 15,
+      "question": "Какая была выручка группы в рублях по годам?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 19",
+        "FY2024_Issuer's report.pdf, стр. 18",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 25",
+        "FY2024_Issuer's report.pdf, стр. 18",
+        "FY2024_Issuer's report.pdf, стр. 19"
+      ],
+      "answer": "Консолидированная выручка Группы в рублях составила 25 371,8 млн руб. [FY2024_Issuer's report.pdf, 7].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 1,
+        "total_groups": 1,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 1,
+        "retrieved_fragments": 5,
+        "unique_pages": 4,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 1,
+        "formatted_citations": 0,
+        "malformed_citations": 1,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 2.2774425410025287
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Консолидированная выручка Группы в рублях составила 25 371,8 млн руб.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "В рублях раскрыта только выручка за 2024 год",
+            "holds": false
+          },
+          {
+            "text": "За 2023 год приведён лишь рост на 3,0%",
+            "holds": false
+          },
+          {
+            "text": "за 2025 год рублёвых данных нет",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент предоставил только одно значение выручки за 2024 год, не ответив на вопрос о выручке по всем годам и не указав отсутствие данных за другие периоды.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 16,
+      "question": "Пациентов в поликлинике в 2024 и 2025 стало больше или меньше относительно 2023 года?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 6",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "FY2024_Issuer's report.pdf, стр. 8"
+      ],
+      "answer": "По итогам 2024 года в целом количество поликлинических визитов составило 360 134 (-6,8% к 2023 году) [FY2024_Issuer's report.pdf, 6]. Количество поликлинических визитов составило 359 443 [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9]. Количество поликлинических визитов составило 307 539 в ноябре – декабре 2025 года по сравнению с 266 475 в ноябре – декабре 2024 года, что составило 15,4% [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 2,
+        "total_groups": 2,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 4,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 3,
+        "formatted_citations": 0,
+        "malformed_citations": 3,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 4.20752637500118
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "По итогам 2024 года количество поликлинических визитов составило 360 134 (-6,8% к 2023 году)",
+            "holds": true
+          },
+          {
+            "text": "Количество поликлинических визитов (в другом отчете) составило 359 443",
+            "holds": true
+          },
+          {
+            "text": "В ноябре – декабре 2025 года количество поликлинических визитов составило 307 539, а в ноябре – декабре 2024 года — 266 475 (рост на 15,4%)",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "В 2023 году было 386 490 визитов",
+            "holds": false
+          },
+          {
+            "text": "В 2024 году было 360 134 визита",
+            "holds": true
+          },
+          {
+            "text": "В 2025 году было 359 443 визита",
+            "holds": true
+          },
+          {
+            "text": "Количество пациентов стало меньше в оба года относительно 2023 года",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент не ответил на вопрос о сравнении (больше или меньше) и не привел данные за 2023 год, которые указаны в эталоне.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.5
+      }
+    },
+    {
+      "number": 17,
+      "question": "Какие организации подконтрольны эмитенту и по каким адресам они находятся?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 62",
+        "FY2024_Issuer's report.pdf, стр. 58",
+        "FY2024_Issuer's report.pdf, стр. 60",
+        "FY2024_Issuer's report.pdf, стр. 61",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 66",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 67",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 70",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 71"
+      ],
+      "answer": "123104, город Москва, переулок Спиридоньевский, 5, стр.1. [FY2024_Issuer's report.pdf, 62]\n129090, Город Москва, ул. Щепкина, д. 35, эт. 1, пом. 40 [FY24_Issuer's report.pdf, 58]\n129090, г. Москва, ул. Щепкина, д. 35 [FY24_Issuer's report.pdf, 60]\n140407, Россия, Московская область, Коломенский городской округ, г. Коломна, ул. Октябрьской революции, д. 318, этаж 1, каб. 18 [FY24_Issuer's report.pdf, 60]\n129110, г. Москва, Щепкина ул., д. 35, эт/пом 1/40 [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 66]",
+      "metrics": {
+        "page_hit": false,
+        "covered_groups": 3,
+        "total_groups": 4,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 3,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 3,
+        "snippets_total": 3,
+        "citations": 5,
+        "formatted_citations": 0,
+        "malformed_citations": 5,
+        "invented_citations": 3,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 5.04749895799614
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Место нахождения по адресу: 123104, город Москва, переулок Спиридоньевский, 5, стр.1.",
+            "holds": true
+          },
+          {
+            "text": "Место нахождения по адресу: 129090, Город Москва, ул. Щепкина, д. 35, эт. 1, пом. 40",
+            "holds": true
+          },
+          {
+            "text": "Место нахождения по адресу: 129090, г. Москва, ул. Щепкина, д. 35",
+            "holds": true
+          },
+          {
+            "text": "Место нахождения по адресу: 140407, Россия, Московская область, Коломенский городской округ, г. Коломна, ул. Октябрьской революции, д. 318, этаж 1, каб. 18",
+            "holds": true
+          },
+          {
+            "text": "Место нахождения по адресу: 129110, г. Москва, Щепкина ул., д. 35, эт/пом 1/40",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "АО «ЕМС-ХолдКо» подконтрольна",
+            "holds": false
+          },
+          {
+            "text": "ООО «Менеджмент будущего» подконтрольна",
+            "holds": false
+          },
+          {
+            "text": "АО «ЕМЦ» подконтрольна",
+            "holds": false
+          },
+          {
+            "text": "ООО «МОЦ» подконтрольна",
+            "holds": false
+          },
+          {
+            "text": "ООО «Европейская клиника Сениор Групп» подконтрольна",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент перечислил только адреса, полностью проигнорировав вопрос о наименованиях организаций.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.0
+      }
+    },
+    {
+      "number": 18,
+      "question": "В каких органах управления состоит Яновский Андрей Владимирович?",
+      "retrieved": [
+        "FY2024_Issuer's report.pdf, стр. 48",
+        "FY2024_Issuer's report.pdf, стр. 49",
+        "FY2024_Issuer's report.pdf, стр. 43",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 44",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 38",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 45",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 46"
+      ],
+      "answer": "Яновский Андрей Владимирович состоит в следующих органах управления эмитента:\n\n*   Генеральный директор МКПАО ЮМГ с 2014 года по настоящее время [FY2024_Issuer's report.pdf, 48].\n*   Независимый член Совета директоров [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 44].",
+      "metrics": {
+        "page_hit": false,
+        "covered_groups": 2,
+        "total_groups": 3,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 4,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 1,
+        "citations": 2,
+        "formatted_citations": 0,
+        "malformed_citations": 2,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 4.763649500004249
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Яновский Андрей Владимирович является Генеральным директором МКПАО ЮМГ с 2014 года по настоящее время.",
+            "holds": true
+          },
+          {
+            "text": "Яновский Андрей Владимирович является независимым членом Совета директоров.",
+            "holds": false
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "Член совета директоров эмитента",
+            "holds": true
+          },
+          {
+            "text": "Генеральный директор МКПАО ЮМГ",
+            "holds": true
+          },
+          {
+            "text": "член советов директоров подконтрольных организаций",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент не указал информацию о членстве в советах директоров подконтрольных организаций и необоснованно квалифицировал его как «независимого» члена совета директоров, хотя в контексте это прямо не подтверждено (указана только должность).",
+        "error": "",
+        "faithfulness": 0.5,
+        "correctness": 0.6666666666666666
+      }
+    },
+    {
+      "number": 19,
+      "question": "Сколько госпитализаций в стационар было в 2023, 2024 и 2025 годах?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "FY2024_Issuer's report.pdf, стр. 6",
+        "FY2024_Issuer's report.pdf, стр. 7",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 9",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 8"
+      ],
+      "answer": "Госпитализации в стационар составили 23 984 в 2023 году, 21 898 в 2024 году и 22 660 в 2025 году [FY2024_Issuer's report.pdf, 6; Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 9; Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 8].",
+      "metrics": {
+        "page_hit": true,
+        "covered_groups": 2,
+        "total_groups": 2,
+        "reciprocal_rank": 0.5,
+        "relevant_fragments": 3,
+        "retrieved_fragments": 5,
+        "unique_pages": 3,
+        "snippets_found": 2,
+        "snippets_total": 2,
+        "citations": 3,
+        "formatted_citations": 0,
+        "malformed_citations": 3,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 4.0121094589994755
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "В 2023 году количество госпитализаций составило 23 984",
+            "holds": true
+          },
+          {
+            "text": "В 2024 году количество госпитализаций составило 21 898",
+            "holds": true
+          },
+          {
+            "text": "В 2025 году количество госпитализаций составило 22 660",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "23 984 в 2023 году",
+            "holds": true
+          },
+          {
+            "text": "21 898 в 2024 году",
+            "holds": true
+          },
+          {
+            "text": "22 660 в 2025 году",
+            "holds": true
+          }
+        ],
+        "reasoning": "Все утверждения ассистента верны и полностью соответствуют предоставленным данным.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 1.0
+      }
+    },
+    {
+      "number": 20,
+      "question": "Что известно про АО «ЕМЦ»: кому оно принадлежит, чем занимается и по какому кредиту выступает заёмщиком?",
+      "retrieved": [
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 58",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 59",
+        "FY2024_Issuer's report.pdf, стр. 59",
+        "FY2024_Issuer's report.pdf, стр. 60",
+        "FY2024_Issuer's report.pdf, стр. 62",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 69",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 70",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 66",
+        "Отчет эмитента МКПАО ЮМГ 12м2025.pdf, стр. 67"
+      ],
+      "answer": "Полное наименование АО «ЕМЦ» — Акционерное общество «Европейский Медицинский Центр» [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 58]. Основной вид деятельности АО «ЕМЦ» — Общая врачебная практика [Отчет эмитента МКПАО ЮМГ 12м2025.pdf, 69].\n\nИнформация о том, кому принадлежит АО «ЕМЦ», представлена в контексте цепочки организаций, находящихся под косвенным контролем эмитента: Эмитент владеет 99% акций АО «ЕМС-ХолдКо», которое в свою очередь владеет 100% акций АО «ЕМЦ» [FY2024_Issuer's report.pdf, 62].\n\nКонтекст не содержит информации о том, по какому кредиту выступает заёмщиком.",
+      "metrics": {
+        "page_hit": false,
+        "covered_groups": 2,
+        "total_groups": 3,
+        "reciprocal_rank": 1.0,
+        "relevant_fragments": 2,
+        "retrieved_fragments": 5,
+        "unique_pages": 5,
+        "snippets_found": 1,
+        "snippets_total": 2,
+        "citations": 3,
+        "formatted_citations": 0,
+        "malformed_citations": 3,
+        "invented_citations": 0,
+        "outside_context_citations": 0,
+        "refused": false,
+        "seconds": 5.114044707996072
+      },
+      "verdict": {
+        "claims": [
+          {
+            "text": "Полное наименование АО «ЕМЦ» — Акционерное общество «Европейский Медицинский Центр».",
+            "holds": true
+          },
+          {
+            "text": "Основной вид деятельности АО «ЕМЦ» — Общая врачебная практика.",
+            "holds": true
+          },
+          {
+            "text": "Эмитент владеет 99% акций АО «ЕМС-ХолдКо», которое в свою очередь владеет 100% акций АО «ЕМЦ».",
+            "holds": true
+          },
+          {
+            "text": "В контексте нет информации о кредите, по которому выступает заёмщиком.",
+            "holds": true
+          }
+        ],
+        "expected_facts": [
+          {
+            "text": "Подконтрольная эмитенту организация, основной вид деятельности — общая врачебная практика.",
+            "holds": true
+          },
+          {
+            "text": "Заёмщик по кредитной линии Райффайзенбанка на 790 000 000 рублей, по которой эмитент дал поручительство.",
+            "holds": false
+          }
+        ],
+        "reasoning": "Ассистент верно определил деятельность и принадлежность организации на основе предоставленного контекста, но не смог найти информацию о кредите, так как её действительно нет в предоставленных фрагментах.",
+        "error": "",
+        "faithfulness": 1.0,
+        "correctness": 0.5
+      }
+    }
+  ]
+}
