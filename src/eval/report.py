@@ -16,7 +16,6 @@ REPORTS_DIR = PROJECT_ROOT / "docs" / "eval"
 
 # Что подсветить жирным в отчёте.
 KEY_METRICS = (
-    "page_hit_rate@3",
     "mrr",
     "precision@k",
     "fact_hit_rate",

@@ -58,11 +58,10 @@ class CaseMetrics:
 
     Атрибуты:
         page_hit: True — выдача покрыла все группы эталонных страниц.
-        page_hit_at_3: то же по первым трём фрагментам выдачи. Более жёсткая планка:
-            попадание в топ-5 упирается в потолок раньше, чем поиск перестаёт улучшаться.
         covered_groups: сколько групп эталона покрыто.
         total_groups: сколько групп эталона всего.
-        reciprocal_rank: единица, делённая на место первой эталонной страницы в выдаче.
+        reciprocal_rank: единица, делённая на место первого фрагмента выдачи,
+            попавшего на эталонную страницу.
         relevant_fragments: сколько фрагментов выдачи попало на эталонную страницу.
         retrieved_fragments: сколько фрагментов выдача принесла всего. Это и есть
             TOP_K, если у всех фрагментов известна страница.
@@ -86,7 +85,6 @@ class CaseMetrics:
     """
 
     page_hit: bool
-    page_hit_at_3: bool
     covered_groups: int
     total_groups: int
     reciprocal_rank: float
@@ -154,20 +152,27 @@ def count_relevant_fragments(
     return sum(1 for pages in retrieved_groups if set(pages) & expected)
 
 
-def reciprocal_rank(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) -> float:
-    """Считает обратное место первой эталонной страницы в выдаче.
+def reciprocal_rank(
+    retrieved_groups: Sequence[Sequence[Page]],
+    expected_pages: Sequence[Sequence[Page]],
+) -> float:
+    """Считает обратное место первого эталонного фрагмента в выдаче.
+
+    Место фрагмента, а не страницы: фрагмент занимает одно место в контексте,
+    сколько бы листов он ни пересекал.
 
     Аргументы:
-        retrieved: страницы в порядке, в котором их вернул поиск.
+        retrieved_groups: страницы каждого фрагмента выдачи, в порядке выдачи.
         expected_pages: группы эталонных страниц.
 
     Возвращает:
-        1/место для первой эталонной страницы, ноль — если эталона в выдаче нет.
+        1/место для первого фрагмента с эталонной страницей, ноль — если эталона
+        в выдаче нет.
     """
     expected = {page for group in expected_pages for page in group}
 
-    for place, page in enumerate(retrieved, start = 1):
-        if page in expected:
+    for place, pages in enumerate(retrieved_groups, start = 1):
+        if set(pages) & expected:
             return 1 / place
 
     return 0.0
@@ -319,10 +324,9 @@ def measure(
 
     return CaseMetrics(
         page_hit = is_hit(retrieved, case.expected_pages),
-        page_hit_at_3 = is_hit(retrieved[:3], case.expected_pages),
         covered_groups = count_covered_groups(retrieved, case.expected_pages),
         total_groups = len(case.expected_pages),
-        reciprocal_rank = reciprocal_rank(retrieved, case.expected_pages),
+        reciprocal_rank = reciprocal_rank(retrieved_groups, case.expected_pages),
         relevant_fragments = count_relevant_fragments(retrieved_groups, case.expected_pages),
         retrieved_fragments = len(retrieved_groups),
         # Фрагмент представлен своим первым листом: иначе сшитая таблица считалась бы
@@ -376,10 +380,6 @@ def summarize(
     summary = {
         "page_hit_rate": collect(
             [(case.number, float(metrics.page_hit)) for case, metrics in answerable],
-            unit = "вопросов",
-        ),
-        "page_hit_rate@3": collect(
-            [(case.number, float(metrics.page_hit_at_3)) for case, metrics in answerable],
             unit = "вопросов",
         ),
         "mrr": collect(
