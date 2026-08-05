@@ -7,8 +7,9 @@
 
 Флаг --filters ограничивает поиск разметкой документов из поля tags у вопроса,
 --rerank переставляет найденное cross-encoder, --hybrid добавляет к векторному
-поиску лексический, --mmr разбавляет выдачу непохожими фрагментами. Прогон
-с флагом и без него под разными именами (--name) и даёт сравнение.
+поиску лексический, --mmr разбавляет выдачу непохожими фрагментами, --mmr2 делает
+то же самое отбором из оценённых реранкером кандидатов. Прогон с флагом и без него
+под разными именами (--name) и даёт сравнение.
 
 Режим retrieval быстрый, потому что модель не вызывается: на нём и подбираются настройки
 поиска. Полный прогон нужен для отчёта и для метрик, которые считаются по тексту ответа.
@@ -22,6 +23,7 @@ from typing import List, Set
 import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.llms import LLM
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.vector_stores import MetadataFilters
 from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
@@ -32,10 +34,16 @@ from eval.metrics import measure, summarize
 from eval.report import SnapshotBelongsToOtherSettings, print_summary, print_table, save_report
 from eval.results import CaseRun, page_range, to_pages
 from rag_assistant.config import AppConfig
+from rag_assistant.diversity import (
+    DiversityWeightMissing,
+    create_diversity_postprocessor,
+    resolve_mmr_threshold,
+)
 from rag_assistant.engine import (
     RagEngine,
     Source,
     create_retriever,
+    rerank_top_n,
     retrieval_top_k,
     to_source,
 )
@@ -78,6 +86,7 @@ def retrieve_sources(
     retriever: BaseRetriever,
     question: str,
     reranker: SentenceTransformerRerank | None,
+    diversity: BaseNodePostprocessor | None,
 ) -> List[Source]:
     """Возвращает фрагменты по вопросу, не обращаясь к модели.
 
@@ -85,6 +94,7 @@ def retrieve_sources(
         retriever: поиск, отдающий фрагменты по вопросу.
         question: вопрос.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+        diversity: отбор по разнообразию либо None, если выдача идёт как есть.
 
     Возвращает:
         Фрагменты в том порядке, в котором их увидела бы модель.
@@ -93,8 +103,9 @@ def retrieve_sources(
 
     # Режим retrieval идёт мимо движка запросов, а постпроцессоры применяет он.
     # Без этого вызова режимы retrieval и full мерили бы разные пайплайны.
-    if reranker is not None:
-        nodes = reranker.postprocess_nodes(nodes, query_str = question)
+    for postprocessor in (reranker, diversity):
+        if postprocessor is not None:
+            nodes = postprocessor.postprocess_nodes(nodes, query_str = question)
 
     return [to_source(node) for node in nodes]
 
@@ -106,6 +117,7 @@ def run_case(
     known_pages: Set[Page],
     filters: MetadataFilters | None,
     reranker: SentenceTransformerRerank | None,
+    diversity: BaseNodePostprocessor | None,
     lexical_index: LexicalIndex | None,
     mmr_threshold: float | None,
     with_answer: bool,
@@ -120,6 +132,7 @@ def run_case(
         known_pages: все страницы, лежащие в индексе.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+        diversity: отбор по разнообразию после реранкера либо None.
         lexical_index: индекс поиска по словам либо None — искать только векторно.
         mmr_threshold: вес близости против разнообразия либо None — только близость.
         with_answer: True — спросить модель, False — снять только выдачу поиска.
@@ -138,13 +151,18 @@ def run_case(
         top_k = retrieval_top_k(
             config = config,
             reranker = reranker,
+            diversity = diversity is not None,
         ),
         lexical_index = lexical_index,
         mmr_threshold = mmr_threshold,
     )
 
     if with_answer:
-        response = RagEngine(retriever = retriever, reranker = reranker).ask(case.question)
+        response = RagEngine(
+            retriever = retriever,
+            reranker = reranker,
+            diversity = diversity,
+        ).ask(case.question)
         sources = response.sources
         answer = response.text
     else:
@@ -152,6 +170,7 @@ def run_case(
             retriever = retriever,
             question = case.question,
             reranker = reranker,
+            diversity = diversity,
         )
         answer = ""
 
@@ -217,6 +236,11 @@ def parse_arguments() -> argparse.Namespace:
         help = "разбавлять выдачу непохожими фрагментами, вес из MMR_THRESHOLD",
     )
     parser.add_argument(
+        "--mmr2",
+        action = "store_true",
+        help = "то же разнообразие, но отбором из оценённых реранкером кандидатов",
+    )
+    parser.add_argument(
         "--hybrid",
         action = "store_true",
         help = "искать векторно и по словам сразу, объединяя выдачи",
@@ -227,6 +251,11 @@ def parse_arguments() -> argparse.Namespace:
 
     if arguments.judge and arguments.mode != "full":
         parser.error("судья оценивает ответы, поэтому нужен режим full")
+
+    # Обе техники решают одну задачу на разных шагах пайплайна. Включённые вместе,
+    # они дважды жертвуют релевантностью ради разнообразия, и вклад каждой не разделить.
+    if arguments.mmr and arguments.mmr2:
+        parser.error("--mmr и --mmr2 — две реализации одного приёма, включается одна")
 
     return arguments
 
@@ -245,7 +274,7 @@ def enabled_modes(arguments: argparse.Namespace) -> List[str]:
     """
     return [
         name
-        for name in ("filters", "rerank", "mmr", "hybrid")
+        for name in ("filters", "rerank", "mmr", "mmr2", "hybrid")
         if getattr(arguments, name)
     ]
 
@@ -261,12 +290,13 @@ def main() -> None:
     configure_global_settings(config)
 
     try:
+        diversity_threshold = resolve_mmr_threshold(config) if arguments.mmr2 else None
         index = open_index(
             config = config,
             load_documents = partial(load_documents, config = config),
             rebuild = False,
         )
-    except IndexSettingsChanged as mismatch:
+    except (IndexSettingsChanged, DiversityWeightMissing) as mismatch:
         print(mismatch, file = sys.stderr)
         raise SystemExit(1)
 
@@ -278,7 +308,22 @@ def main() -> None:
         if arguments.judge
         else None
     )
-    reranker = create_reranker(config) if arguments.rerank else None
+    reranker = (
+        create_reranker(
+            config = config,
+            top_n = rerank_top_n(config = config, diversity = arguments.mmr2),
+        )
+        if arguments.rerank
+        else None
+    )
+    diversity = (
+        create_diversity_postprocessor(
+            config = config,
+            mmr_threshold = diversity_threshold,
+        )
+        if diversity_threshold is not None
+        else None
+    )
     lexical_index = create_lexical_index(index) if arguments.hybrid else None
 
     # Список техник собирается до прогона.
@@ -296,6 +341,7 @@ def main() -> None:
                 known_pages = known_pages,
                 filters = filters,
                 reranker = reranker,
+                diversity = diversity,
                 lexical_index = lexical_index,
                 mmr_threshold = config.mmr_threshold if arguments.mmr else None,
                 with_answer = arguments.mode == "full",

@@ -11,6 +11,10 @@
 Техники поиска включаются флагами, как на стенде: --rerank, --hybrid, --mmr.
 Флаг только включает технику, настройка берётся из .env: RERANK_MODEL,
 MMR_THRESHOLD.
+
+Флаг --mmr2 — тот же приём на другом месте пайплайна: разнообразие отбирается
+не векторным хранилищем до реранкера, а из оценённых им кандидатов после него.
+Вес берётся из того же MMR_THRESHOLD.
 """
 import argparse
 import sys
@@ -21,7 +25,12 @@ from llama_index.core import VectorStoreIndex
 
 from rag_assistant.config import AppConfig
 from rag_assistant.dump import write_cleaned_documents, write_corpus
-from rag_assistant.engine import RagEngine, create_retriever, retrieval_top_k
+from rag_assistant.diversity import (
+    DiversityWeightMissing,
+    create_diversity_postprocessor,
+    resolve_mmr_threshold,
+)
+from rag_assistant.engine import RagEngine, create_retriever, rerank_top_n, retrieval_top_k
 from rag_assistant.index import open_index
 from rag_assistant.index_signature import IndexSettingsChanged
 from rag_assistant.ingest import load_documents
@@ -86,8 +95,18 @@ def parse_arguments() -> argparse.Namespace:
         action = "store_true",
         help = "разбавлять выдачу непохожими фрагментами, вес из MMR_THRESHOLD",
     )
+    parser.add_argument(
+        "--mmr2",
+        action = "store_true",
+        help = "то же разнообразие, но отбором из оценённых реранкером кандидатов",
+    )
 
     arguments = parser.parse_args()
+
+    # Обе техники решают одну задачу на разных шагах пайплайна. Включённые вместе,
+    # они дважды жертвуют релевантностью ради разнообразия, и вклад каждой не разделить.
+    if arguments.mmr and arguments.mmr2:
+        parser.error("--mmr и --mmr2 — две реализации одного приёма, включается одна")
 
     if arguments.command == "ask" and not arguments.question:
         parser.error('команде ask нужен вопрос: uv run main.py ask "текст вопроса"')
@@ -112,7 +131,7 @@ def enabled_modes(arguments: argparse.Namespace) -> List[str]:
     Возвращает:
         Имена включённых техник в порядке применения.
     """
-    return [name for name in ("rerank", "hybrid", "mmr") if getattr(arguments, name)]
+    return [name for name in ("rerank", "hybrid", "mmr", "mmr2") if getattr(arguments, name)]
 
 
 def main() -> None:
@@ -139,8 +158,9 @@ def main() -> None:
 
     try:
         filters = build_filters(parse_tags(arguments.tag))
+        diversity_threshold = resolve_mmr_threshold(config) if arguments.mmr2 else None
         index = prepare_index(config = config, rebuild = arguments.command == "reindex")
-    except (TagFormatError, IndexSettingsChanged) as mismatch:
+    except (TagFormatError, IndexSettingsChanged, DiversityWeightMissing) as mismatch:
         # Ожидаемая ситуация, а не сбой: показываем причину без стека вызовов.
         print(mismatch, file = sys.stderr)
         raise SystemExit(1)
@@ -149,7 +169,14 @@ def main() -> None:
     if arguments.command == "reindex":
         return
 
-    reranker = create_reranker(config) if arguments.rerank else None
+    reranker = (
+        create_reranker(
+            config = config,
+            top_n = rerank_top_n(config = config, diversity = arguments.mmr2),
+        )
+        if arguments.rerank
+        else None
+    )
     engine = RagEngine(
         retriever = create_retriever(
             index = index,
@@ -157,11 +184,20 @@ def main() -> None:
             top_k = retrieval_top_k(
                 config = config,
                 reranker = reranker,
+                diversity = arguments.mmr2,
             ),
             lexical_index = create_lexical_index(index) if arguments.hybrid else None,
             mmr_threshold = config.mmr_threshold if arguments.mmr else None,
         ),
         reranker = reranker,
+        diversity = (
+            create_diversity_postprocessor(
+                config = config,
+                mmr_threshold = diversity_threshold,
+            )
+            if diversity_threshold is not None
+            else None
+        ),
     )
 
     if arguments.command == "ask":

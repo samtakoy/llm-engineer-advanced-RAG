@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List
 
 from llama_index.core import VectorStoreIndex
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
@@ -54,18 +55,38 @@ class Answer:
 def retrieval_top_k(
     config: AppConfig,
     reranker: SentenceTransformerRerank | None,
+    diversity: bool,
 ) -> int:
     """Определяет, сколько фрагментов должен принести поиск.
 
     Аргументы:
         config: конфигурация приложения.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+        diversity: True — выдачу отбирает разнообразие.
 
     Возвращает:
-        Число кандидатов с запасом, когда фрагменты будут переставлены реранкером,
-        иначе ровно столько, сколько уйдёт модели.
+        Число кандидатов с запасом, когда выдачу будет переставлять реранкер либо
+        отбирать разнообразие, иначе ровно столько, сколько уйдёт модели.
     """
-    return config.candidate_top_k if reranker is not None else config.top_k
+    if reranker is None and not diversity:
+        return config.top_k
+
+    return config.candidate_top_k
+
+
+def rerank_top_n(config: AppConfig, diversity: bool) -> int:
+    """Определяет, сколько фрагментов оставляет реранкер.
+
+    Аргументы:
+        config: конфигурация приложения.
+        diversity: True — после реранкера идёт отбор по разнообразию.
+
+    Возвращает:
+        Всех кандидатов, когда выдачу будет отбирать разнообразие: урезав список
+        сразу до top_k, реранкер не оставил бы отбору выбора. Иначе ровно столько,
+        сколько уйдёт модели.
+    """
+    return config.candidate_top_k if diversity else config.top_k
 
 
 def create_vector_retriever(
@@ -162,6 +183,7 @@ class RagEngine:
         self,
         retriever: BaseRetriever,
         reranker: SentenceTransformerRerank | None,
+        diversity: BaseNodePostprocessor | None,
     ) -> None:
         """Создаёт движок запросов поверх готового поиска.
         Поиск собирается снаружи.
@@ -169,11 +191,17 @@ class RagEngine:
         Аргументы:
             retriever: поиск, отдающий фрагменты по вопросу.
             reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
+            diversity: отбор по разнообразию либо None, если выдача идёт как есть.
+                Стоит после реранкера: отбирает из того, что тот уже оценил.
         """
         self.query_engine = RetrieverQueryEngine.from_args(
             retriever = retriever,
             text_qa_template = QA_TEMPLATE,
-            node_postprocessors = [reranker] if reranker is not None else [],
+            node_postprocessors = [
+                postprocessor
+                for postprocessor in (reranker, diversity)
+                if postprocessor is not None
+            ],
         )
 
     def ask(self, question: str) -> Answer:

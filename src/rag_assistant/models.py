@@ -173,7 +173,7 @@ def create_embedding_model(config: AppConfig) -> HuggingFaceEmbedding:
     return embedding_model
 
 
-def create_reranker(config: AppConfig) -> SentenceTransformerRerank | None:
+def create_reranker(config: AppConfig, top_n: int) -> SentenceTransformerRerank | None:
     """Создаёт cross-encoder, переставляющий найденные фрагменты по близости к вопросу.
 
     Эмбеддер считает вектор вопроса и вектор фрагмента порознь, поэтому меряет
@@ -183,6 +183,8 @@ def create_reranker(config: AppConfig) -> SentenceTransformerRerank | None:
 
     Аргументы:
         config: конфигурация приложения.
+        top_n: сколько фрагментов оставить после перестановки. Обычно это top_k,
+            но когда следом идёт отбор по разнообразию — весь список кандидатов.
 
     Возвращает:
         Реранкер либо None, если модель не задана: тогда порядок остаётся за поиском.
@@ -192,7 +194,7 @@ def create_reranker(config: AppConfig) -> SentenceTransformerRerank | None:
 
     return SentenceTransformerRerank(
         model = config.rerank_model,
-        top_n = config.top_k,
+        top_n = top_n,
         device = select_device(),
         keep_retrieval_score = True,
         # Класс из llama-index-core зашивает предел в 512 токенов и наружу его
