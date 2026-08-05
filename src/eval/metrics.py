@@ -63,8 +63,9 @@ class CaseMetrics:
         covered_groups: сколько групп эталона покрыто.
         total_groups: сколько групп эталона всего.
         reciprocal_rank: единица, делённая на место первой эталонной страницы в выдаче.
-        relevant_pages: сколько страниц выдачи входит в эталон.
-        retrieved_pages: сколько страниц выдача принесла всего.
+        relevant_fragments: сколько фрагментов выдачи попало на эталонную страницу.
+        retrieved_fragments: сколько фрагментов выдача принесла всего. Это и есть
+            TOP_K, если у всех фрагментов известна страница.
         unique_pages: сколько разных страниц в выдаче, мера её избыточности.
         snippets_found: сколько эталонных подстрок дошло до модели в тексте выдачи.
         snippets_total: сколько эталонных подстрок у вопроса всего.
@@ -87,8 +88,8 @@ class CaseMetrics:
     covered_groups: int
     total_groups: int
     reciprocal_rank: float
-    relevant_pages: int
-    retrieved_pages: int
+    relevant_fragments: int
+    retrieved_fragments: int
     unique_pages: int
     snippets_found: int
     snippets_total: int
@@ -129,23 +130,26 @@ def is_hit(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) 
     return count_covered_groups(retrieved, expected_pages) == len(expected_pages)
 
 
-def count_relevant_pages(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) -> int:
-    """Считает страницы выдачи, входящие в эталон.
+def count_relevant_fragments(
+    retrieved_groups: Sequence[Sequence[Page]],
+    expected_pages: Sequence[Sequence[Page]],
+) -> int:
+    """Считает фрагменты выдачи, попавшие хотя бы на одну эталонную страницу.
 
-    Считаются места в выдаче, а не разные страницы: если одна и та же эталонная
-    страница пришла двумя фрагментами, оба места заняты по делу. Фрагмент со сшитой
-    таблицей приносит обе свои страницы и засчитывается по каждой отдельно.
+    Считаются фрагменты, а не страницы: фрагмент — это то, что заняло место
+    в контексте модели, и фрагмент со сшитой таблицей занимает одно место,
+    хотя лежит на двух листах.
 
     Аргументы:
-        retrieved: страницы, которые вернул поиск, в порядке выдачи.
+        retrieved_groups: страницы каждого фрагмента выдачи, в порядке выдачи.
         expected_pages: группы эталонных страниц.
 
     Возвращает:
-        Число мест выдачи, занятых эталонной страницей.
+        Число фрагментов, у которых хотя бы одна страница входит в эталон.
     """
     expected = {page for group in expected_pages for page in group}
 
-    return sum(1 for page in retrieved if page in expected)
+    return sum(1 for pages in retrieved_groups if set(pages) & expected)
 
 
 def reciprocal_rank(retrieved: Sequence[Page], expected_pages: Sequence[Sequence[Page]]) -> float:
@@ -286,7 +290,7 @@ def count_found_snippets(context: str, snippets: Sequence[str]) -> int:
 
 def measure(
     case: Case,
-    retrieved: Sequence[Page],
+    retrieved_groups: Sequence[Sequence[Page]],
     context: str,
     answer: str,
     known_pages: Set[Page],
@@ -296,7 +300,9 @@ def measure(
 
     Аргументы:
         case: контрольный вопрос с эталоном.
-        retrieved: страницы, которые вернул поиск, в порядке выдачи.
+        retrieved_groups: страницы каждого фрагмента выдачи, в порядке выдачи.
+            Фрагмент со сшитой таблицей отдаёт обе свои страницы, поэтому
+            фрагменты и страницы считаются порознь.
         context: склеенный текст найденных фрагментов.
         answer: текст ответа модели, пустой в режиме проверки только поиска.
         known_pages: все страницы, лежащие в индексе.
@@ -306,6 +312,7 @@ def measure(
         Метрики вопроса.
     """
     citations = find_citations(answer)
+    retrieved = [page for pages in retrieved_groups for page in pages]
     pages_in_context = set(retrieved)
 
     return CaseMetrics(
@@ -314,8 +321,8 @@ def measure(
         covered_groups = count_covered_groups(retrieved, case.expected_pages),
         total_groups = len(case.expected_pages),
         reciprocal_rank = reciprocal_rank(retrieved, case.expected_pages),
-        relevant_pages = count_relevant_pages(retrieved, case.expected_pages),
-        retrieved_pages = len(retrieved),
+        relevant_fragments = count_relevant_fragments(retrieved_groups, case.expected_pages),
+        retrieved_fragments = len(retrieved_groups),
         unique_pages = len(pages_in_context),
         snippets_found = count_found_snippets(context, case.expected_snippets),
         snippets_total = len(case.expected_snippets),
@@ -345,8 +352,8 @@ def summarize(
 
     Возвращает:
         Итоговые метрики: попадание в эталонные страницы, доля покрытых групп эталона,
-        средний обратный ранг, доля мест выдачи, занятых эталоном, честность ссылок,
-        отказы и оценки судьи. Уникальность
+        средний обратный ранг, доля найденных фрагментов, попавших в эталон, честность
+        ссылок, отказы и оценки судьи. Уникальность
         страниц сюда не входит: она нужна для оценки эффекта MMR и видна по каждому
         вопросу в таблице.
     """
@@ -430,36 +437,36 @@ def collect_duration(measurements: Sequence[CaseMetrics]) -> Measure:
 
 
 def collect_precision(answerable: Sequence[tuple]) -> Measure:
-    """Сводит долю мест выдачи, занятых эталонными страницами.
+    """Сводит долю найденных фрагментов, попавших на эталонную страницу.
 
-    Считается по местам выдачи, а не по вопросам: метрика отвечает на вопрос
-    «сколько из переданного модели было по делу», и вопрос с эталоном в две страницы
-    не должен весить столько же, сколько вопрос с эталоном в одну.
+    Считается по фрагментам, а не по вопросам: метрика отвечает на вопрос «сколько
+    из переданного модели было по делу», и вопрос с эталоном в две страницы не должен
+    весить столько же, сколько вопрос с эталоном в одну. Знаменатель — TOP_K на вопрос.
 
     Парная к fact_hit_rate: тот меряет, сколько нужного дошло до модели, эта —
     сколько лишнего дошло вместе с ним. Потолок задан эталоном: при TOP_K = 8
     и эталоне в одну страницу выше 0.125 значение подняться не может, поэтому
-    сравнивать её осмысленно только между прогонами на одном наборе вопросов.
+    сравнивать её только между прогонами на одном наборе вопросов.
 
     Аргументы:
         answerable: пары «вопрос, метрики» по вопросам, у которых есть эталон.
 
     Возвращает:
-        Метрику. Не зачтёнными считаются вопросы, где выдача не принесла ни одной
-        эталонной страницы: доля меньше единицы здесь норма, а не сбой.
+        Метрику. Не зачтёнными считаются вопросы, где выдача не принесла ни одного
+        эталонного фрагмента: доля меньше единицы здесь норма, а не сбой.
     """
-    relevant = sum(metrics.relevant_pages for _, metrics in answerable)
-    total = sum(metrics.retrieved_pages for _, metrics in answerable)
+    relevant = sum(metrics.relevant_fragments for _, metrics in answerable)
+    total = sum(metrics.retrieved_fragments for _, metrics in answerable)
 
     if not total:
-        return empty_measure(unit = "мест выдачи")
+        return empty_measure(unit = "фрагментов")
 
     return Measure(
         value = share(relevant, total),
         scored = relevant,
         total = total,
-        unit = "мест выдачи",
-        failed = [case.number for case, metrics in answerable if not metrics.relevant_pages],
+        unit = "фрагментов",
+        failed = [case.number for case, metrics in answerable if not metrics.relevant_fragments],
     )
 
 

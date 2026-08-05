@@ -32,7 +32,7 @@ from eval.cases import QUESTIONS_PATH, Case, Page, load_cases
 from eval.judge import judge_answer
 from eval.metrics import measure, summarize
 from eval.report import SnapshotBelongsToOtherSettings, print_summary, print_table, save_report
-from eval.results import CaseRun, page_range, to_pages
+from eval.results import CaseRun, page_range, to_page_groups
 from rag_assistant.config import AppConfig
 from rag_assistant.diversity import (
     DiversityWeightMissing,
@@ -176,7 +176,7 @@ def run_case(
 
     metrics = measure(
         case = case,
-        retrieved = to_pages(sources),
+        retrieved_groups = to_page_groups(sources),
         context = " ".join(source.text for source in sources),
         answer = answer,
         known_pages = known_pages,

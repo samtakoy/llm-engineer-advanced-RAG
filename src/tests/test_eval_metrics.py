@@ -114,7 +114,7 @@ def test_invented_citation_is_counted() -> None:
     """Ссылка на страницу, которой нет в корпусе, — выдуманная."""
     metrics = measure(
         case = make_case(expected_pages = [[FIRST]], expected_refusal = False),
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "",
         answer = "Факт [отчёт.pdf, стр. 99].",
         known_pages = {FIRST, SECOND},
@@ -129,7 +129,7 @@ def test_citation_outside_context_is_counted() -> None:
     """Страница существует, но в контекст не попадала — тоже промах со ссылкой."""
     metrics = measure(
         case = make_case(expected_pages = [[FIRST]], expected_refusal = False),
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "",
         answer = "Факт [отчёт.pdf, стр. 2].",
         known_pages = {FIRST, SECOND},
@@ -144,7 +144,7 @@ def test_refusal_is_undefined_without_answer() -> None:
     """В режиме проверки только поиска отказ не измеряется."""
     metrics = measure(
         case = make_case(expected_pages = [], expected_refusal = True),
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "",
         answer = "",
         known_pages = {FIRST},
@@ -158,7 +158,7 @@ def test_refusal_is_detected_in_answer() -> None:
     """Отказ опознаётся по формулировке из промпта."""
     metrics = measure(
         case = make_case(expected_pages = [], expected_refusal = True),
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "",
         answer = "Я не знаю",
         known_pages = {FIRST},
@@ -175,8 +175,8 @@ def test_summary_excludes_refusal_case_from_hit_rate() -> None:
         make_case(expected_pages = [], expected_refusal = True),
     ]
     measurements = [
-        measure(case = cases[0], retrieved = [THIRD], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
-        measure(case = cases[1], retrieved = [THIRD], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
+        measure(case = cases[0], retrieved_groups = [[THIRD]], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
+        measure(case = cases[1], retrieved_groups = [[THIRD]], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
     ]
 
     assert summarize(cases, measurements, [None, None])["page_hit_rate"].value == 0.0
@@ -190,8 +190,8 @@ def test_summary_names_the_questions_that_failed() -> None:
     ]
     cases = [cases[0], Case(**{**cases[1].__dict__, "number": 2})]
     measurements = [
-        measure(case = cases[0], retrieved = [FIRST], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
-        measure(case = cases[1], retrieved = [FIRST], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
+        measure(case = cases[0], retrieved_groups = [[FIRST]], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
+        measure(case = cases[1], retrieved_groups = [[FIRST]], context = "", answer = "", known_pages = {FIRST}, seconds = 0.0),
     ]
 
     page_hits = summarize(cases, measurements, [None, None])["page_hit_rate"]
@@ -210,7 +210,7 @@ def test_snippets_catch_right_page_wrong_fragment() -> None:
     })
     metrics = measure(
         case = case,
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "другой фрагмент той же страницы, таблицы в нём нет",
         answer = "",
         known_pages = {FIRST},
@@ -230,7 +230,7 @@ def test_snippets_ignore_line_breaks() -> None:
     })
     metrics = measure(
         case = case,
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "визиты\n359\n443 штуки",
         answer = "",
         known_pages = {FIRST},
@@ -316,7 +316,7 @@ def test_judge_scores_reach_the_summary() -> None:
     case = make_case(expected_pages = [[FIRST]], expected_refusal = False)
     metrics = measure(
         case = case,
-        retrieved = [FIRST],
+        retrieved_groups = [[FIRST]],
         context = "",
         answer = "",
         known_pages = {FIRST},

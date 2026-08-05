@@ -27,6 +27,27 @@ class CaseRun:
     verdict: Verdict | None
 
 
+def to_page_groups(sources: List[Source]) -> List[List[Page]]:
+    """Переводит фрагменты в страницы, не смешивая фрагменты между собой.
+
+    Аргументы:
+        sources: фрагменты, которые вернул поиск.
+
+    Возвращает:
+        По списку страниц на каждый фрагмент, у которого номер страницы известен,
+        в порядке выдачи. Фрагмент со сшитой таблицей отдаёт все свои страницы:
+        эталон вопроса может стоять на второй.
+    """
+    return [
+        [
+            Page(document = source.file_name, number = number)
+            for number in page_range(first = source.page_label, last = source.page_end)
+        ]
+        for source in sources
+        if source.page_label and source.page_label.isdigit()
+    ]
+
+
 def to_pages(sources: List[Source]) -> List[Page]:
     """Переводит фрагменты в страницы, сохраняя порядок выдачи.
 
@@ -34,15 +55,10 @@ def to_pages(sources: List[Source]) -> List[Page]:
         sources: фрагменты, которые вернул поиск.
 
     Возвращает:
-        Страницы фрагментов, у которых номер страницы известен. Фрагмент со сшитой
-        таблицей отдаёт все свои страницы: эталон вопроса может стоять на второй.
+        Страницы всех фрагментов одним списком. Фрагмент со сшитой таблицей отдаёт
+        все свои страницы, поэтому список бывает длиннее выдачи.
     """
-    return [
-        Page(document = source.file_name, number = number)
-        for source in sources
-        if source.page_label and source.page_label.isdigit()
-        for number in page_range(first = source.page_label, last = source.page_end)
-    ]
+    return [page for group in to_page_groups(sources) for page in group]
 
 
 def page_range(first: str, last: str | None) -> List[int]:

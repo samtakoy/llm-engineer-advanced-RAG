@@ -24,7 +24,7 @@ def print_table(runs: List[CaseRun]) -> None:
     Возвращает:
         None.
     """
-    header = f"\n{'#':>2}  {'тип':<13} {'стр.':<5} {'факт':<6} {'RR':<5} {'разн.':<6} {'ссылки':<8} "
+    header = f"\n{'#':>2}  {'тип':<13} {'стр.':<5} {'факт':<6} {'RR':<5} {'precision@k':<12} {'разн.':<6} {'ссылки':<8} "
     print(header + f"{'сек':<6} {'судья':<12} вопрос")
     for run in runs:
         metrics = run.metrics
@@ -37,9 +37,16 @@ def print_table(runs: List[CaseRun]) -> None:
         bad = metrics.invented_citations + metrics.outside_context_citations
         citations = f"{metrics.citations - bad}/{metrics.citations}" if metrics.citations else "—"
         facts = f"{metrics.snippets_found}/{metrics.snippets_total}" if metrics.snippets_total else "—"
+        # Precision вопроса-провокации не считается: эталонных страниц у него нет,
+        # и ноль в этой колонке означал бы промах поиска, а не верный отказ.
+        precision = (
+            "—"
+            if run.case.expected_refusal
+            else f"{metrics.relevant_fragments}/{metrics.retrieved_fragments}"
+        )
         print(
             f"{run.case.number:>2}  {run.case.kind:<13} {hit:<5} {facts:<6} "
-            f"{metrics.reciprocal_rank:<5.2f} {metrics.unique_pages:<6} {citations:<8} "
+            f"{metrics.reciprocal_rank:<5.2f} {precision:<12} {metrics.unique_pages:<6} {citations:<8} "
             f"{metrics.seconds:<6.1f} {format_verdict_scores(run.verdict):<12} "
             f"{run.case.question[:38]}"
         )
@@ -247,8 +254,11 @@ def render_case(run: CaseRun) -> List[str]:
 
     if not run.case.expected_refusal:
         lines.append(
-            "- попадание: "
-            + ("да" if metrics.page_hit else f"{metrics.covered_groups} из {metrics.total_groups} групп")
+            f"- нужных страниц найдено: {metrics.covered_groups} из {metrics.total_groups}"
+        )
+        lines.append(
+            f"- из {metrics.retrieved_fragments} найденных фрагментов "
+            f"нужными были {metrics.relevant_fragments}"
         )
 
     lines.append(f"- время: {metrics.seconds:.1f} с")
