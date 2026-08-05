@@ -1,15 +1,25 @@
 """Модели LlamaIndex: LLM, эмбеддер, сплиттер и их регистрация в Settings."""
-from typing import Callable, List
+import sys
+from typing import Any, Callable, Dict, List, Type
 
 import torch
 from llama_index.core import Settings
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
+from llama_index.core.node_parser.interface import NodeParser
+from llama_index.core.prompts import PromptTemplate
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
+from pydantic import BaseModel, Field
 from transformers import AutoTokenizer
 
 from rag_assistant.config import AppConfig
+from rag_assistant.ingest.chained_parser import ChainedNodeParser
+from rag_assistant.ingest.heading_merge import HeadingMergeParser
+from rag_assistant.ingest.table_splitter import TableRowSplitter
+
+# До скольких символов ужимается сообщение об ошибке разбора.
+ERROR_MESSAGE_LIMIT = 200
 
 
 class TextTooLongForModel(RuntimeError):
@@ -19,16 +29,14 @@ class TextTooLongForModel(RuntimeError):
 class SchemaConstrainedLLM(OpenAILike):
     """Клиент, требующий структурированный ответ схемой, а не вызовом инструмента.
 
-    Путей к структурированному ответу два. Первый — описать схему инструментом
-    и попросить его вызвать: сервер модель ничем не ограничивает, она пишет JSON
-    свободно и на длинном ответе рвёт его посередине. Второй — `response_format`
-    с json_schema: LM Studio ограничивает генерацию грамматикой схемы, и ответ
-    не может оказаться ни невалидным JSON, ни значением вне перечисления.
-
-    Второй путь в llama-index реализован, но включается только для моделей
-    из зашитого списка OpenAI (`is_json_schema_supported`), а локальная модель
-    в него по имени не попадает никогда. Проверка подменяется здесь.
+    Атрибуты:
+        failed_responses: сколько ответов сервера не удалось разобрать по схеме.
     """
+
+    failed_responses: int = Field(
+        default = 0,
+        description = "Сколько ответов сервера не удалось разобрать по схеме.",
+    )
 
     def _should_use_structure_outputs(self) -> bool:
         """Сообщает, что сервер умеет ограничивать генерацию схемой.
@@ -37,6 +45,44 @@ class SchemaConstrainedLLM(OpenAILike):
             True всегда: класс и создаётся для серверов, которые это умеют.
         """
         return True
+
+    async def astructured_predict(
+        self,
+        output_cls: Type[BaseModel],
+        prompt: PromptTemplate,
+        llm_kwargs: Dict[str, Any] | None = None,
+        **prompt_args: Any,
+    ) -> BaseModel:
+        """Запрашивает структурированный ответ и считает неудачные разборы.
+
+        Аргументы:
+            output_cls: класс, описывающий ожидаемый ответ.
+            prompt: шаблон запроса.
+            llm_kwargs: аргументы, уходящие в запрос к серверу.
+            prompt_args: значения для подстановки в шаблон.
+
+        Возвращает:
+            Разобранный ответ модели.
+
+        Исключения:
+            ValueError, TypeError, AttributeError: ответ сервера не разобрался
+                по схеме. Те же типы, что ловит извлечение троек llama-index.
+        """
+        try:
+            return await super().astructured_predict(
+                output_cls = output_cls,
+                prompt = prompt,
+                llm_kwargs = llm_kwargs,
+                **prompt_args,
+            )
+        except (ValueError, TypeError, AttributeError) as error:
+            self.failed_responses += 1
+            message = " ".join(str(error).split())[:ERROR_MESSAGE_LIMIT]
+            print(
+                f"Ответ не разобран по схеме: {message or type(error).__name__}",
+                file = sys.stderr,
+            )
+            raise
 
 
 def select_device() -> str:
@@ -176,7 +222,7 @@ def create_embedding_tokenizer(config: AppConfig) -> Callable[[str], List[int]]:
     return tokenizer.encode
 
 
-def create_node_parser(config: AppConfig) -> SentenceSplitter:
+def create_node_parser(config: AppConfig) -> NodeParser:
     """Создаёт сплиттер документов на узлы одного уровня.
 
     Каждый узел векторизуется, поэтому его размер ограничен окном эмбеддера.
@@ -185,16 +231,32 @@ def create_node_parser(config: AppConfig) -> SentenceSplitter:
     токенизатором OpenAI: у них разное дробление русского текста, и на настройках
     по умолчанию чанк не помещался в окно эмбеддера, а лишнее молча отбрасывалось.
 
+    Границу ставит заголовок раздела, а узел, в котором остался один заголовок,
+    приклеивается к следующему. Таблица, не влезающая в окно, режется по своим
+    строкам с повтором шапки — иначе её дорезал бы предел длины, по предложениям
+    и посреди строк, оставляя числа без имён колонок. Предел длины стоит последним
+    и добирает то, что структурой не разрезалось.
+
     Аргументы:
         config: конфигурация приложения.
 
     Возвращает:
-        Сплиттер, дающий плоский список узлов со связями между соседями.
+        Парсер, дающий плоский список узлов в пределах окна эмбеддера.
     """
-    return SentenceSplitter(
-        chunk_size = config.chunk_size,
-        chunk_overlap = config.chunk_overlap,
-        tokenizer = create_embedding_tokenizer(config),
+    return ChainedNodeParser(
+        parsers = [
+            MarkdownNodeParser(),
+            HeadingMergeParser(),
+            TableRowSplitter.create(
+                chunk_size = config.chunk_size,
+                tokenizer = create_embedding_tokenizer(config),
+            ),
+            SentenceSplitter(
+                chunk_size = config.chunk_size,
+                chunk_overlap = config.chunk_overlap,
+                tokenizer = create_embedding_tokenizer(config),
+            ),
+        ],
     )
 
 

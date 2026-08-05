@@ -29,6 +29,17 @@ def build_signature(config: AppConfig) -> Dict[str, str]:
         "embedding_model": config.embedding_model,
         "chunk_size": str(config.chunk_size),
         "chunk_overlap": str(config.chunk_overlap),
+        # Продолжение таблицы на следующем листе: лишняя шапка снимается.
+        "table_continuation": "drop-separator",
+        # Разбор заголовков: ложные снимаются, у настоящих уровень по номеру раздела.
+        # Меняет границы узлов на всём корпусе.
+        "heading_rules": "numbered-levels",
+        # Выделение в тексте: жирный снимается. Меняет текст узлов, а с ним и разбор
+        # полей формы — имя поля жирным разорвано посреди слова.
+        "emphasis_rules": "bold-stripped",
+        # Что считается документом при нарезке: файл целиком. Страницу узел получает
+        # по смещению в его тексте, а не наследует от документа.
+        "document_scope": "file",
         "document_metadata": format_document_metadata(),
     }
 
@@ -50,26 +61,24 @@ def format_document_metadata() -> str:
 
 def find_signature_changes(
     stored: Mapping[str, str],
-    config: AppConfig,
+    expected: Mapping[str, str],
 ) -> Dict[str, Tuple[str | None, str | None]]:
     """Ищет настройки, разошедшиеся с сохранённой подписью.
 
     Аргументы:
         stored: подпись, записанная при сборке.
-        config: конфигурация приложения.
+        expected: подпись текущих настроек.
 
     Возвращает:
         Расхождения по имени настройки: «что записано при сборке, что в конфигурации».
         Пусто — настройки совпали. None на месте записанного значения означает, что
-        настройки в подписи не было вовсе, None на месте текущего — что настройка
-        из подписи ушла, а индекс собран ещё с ней.
+        настройки в подписи не было, None на месте текущего — что настройка
+        из подписи ушла, а сборка сделана ещё с ней.
     """
-    signature = build_signature(config)
-
     return {
-        key: (stored.get(key), signature.get(key))
-        for key in set(stored) | set(signature)
-        if stored.get(key) != signature.get(key)
+        key: (stored.get(key), expected.get(key))
+        for key in set(stored) | set(expected)
+        if stored.get(key) != expected.get(key)
     }
 
 
@@ -102,7 +111,10 @@ def verify_signature(collection: Collection, config: AppConfig) -> None:
     Исключения:
         IndexSettingsChanged: хотя бы одна настройка разошлась с подписью.
     """
-    changed = find_signature_changes(stored = collection.metadata or {}, config = config)
+    changed = find_signature_changes(
+        stored = collection.metadata or {},
+        expected = build_signature(config),
+    )
 
     if not changed:
         return

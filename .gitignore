@@ -7,4 +7,3 @@ __pycache__/
 *.pyc
 .DS_Store
 documents
-neo4j/

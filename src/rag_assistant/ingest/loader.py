@@ -1,4 +1,12 @@
-"""Загрузка документов из папки: один Document на страницу PDF."""
+"""Загрузка документов из папки: страницы PDF и собранные из них файлы.
+
+Страница — единица чтения и адресации: по её номеру строится ссылка в ответе.
+Файл — единица нарезки: стек заголовков, порядок
+чтения и таблицы не должны рваться на границе листа.
+
+Номер страницы при нарезке файла не теряется: узел получает его по своему смещению
+в тексте файла, этим занят `page_attribution`.
+"""
 from pathlib import Path
 from typing import List
 
@@ -9,6 +17,8 @@ from pymupdf4llm.ocr import OCRMode
 from rag_assistant.config import AppConfig
 from rag_assistant.ingest.filters import drop_service_pages
 from rag_assistant.ingest.normalize import normalize_page
+from rag_assistant.ingest.page_map import PAGE_JOIN
+from rag_assistant.ingest.table_continuation import drop_continuation_separators
 
 # Разметка документов для фильтрации по метаданным. Ведётся руками: имена файлов
 # у отчётов разных лет устроены по-разному, а ошибка разметки молча сузила бы поиск.
@@ -22,11 +32,10 @@ DOCUMENT_METADATA = {
 # Номер страницы модель видеть должна — по нему она проставляет ссылку, — но в вектор
 # он попадать не должен: у всех узлов это одинаковое по форме поле со случайным для
 # смысла числом, то есть шум.
-# Поля фильтрации в вектор не идут тем более: год отчёта в тексте чанка сбивал бы поиск
+# Поля фильтрации в вектор не идут: год отчёта в тексте чанка сбивал бы поиск
 # по годам, которые отчёт тоже описывает — сравнительные колонки за прошлый период.
-EXCLUDED_FROM_EMBEDDING = ("file_path", "page_label", "year")
+EXCLUDED_FROM_EMBEDDING = ("file_path", "page_label", "page_end", "year")
 EXCLUDED_FROM_PROMPT = ("file_path",)
-
 
 def load_documents(config: AppConfig) -> List[Document]:
     """Читает папку с документами.
@@ -42,7 +51,45 @@ def load_documents(config: AppConfig) -> List[Document]:
     for pdf_path in sorted(config.documents_dir.rglob("*.pdf")):
         pages.extend(read_pdf(pdf_path))
 
-    documents = drop_service_pages(pages)
+    documents = drop_continuation_separators(drop_service_pages(pages))
+    hide_service_metadata(documents)
+
+    return documents
+
+
+def merge_pages_into_files(pages: List[Document]) -> List[Document]:
+    """Собирает страницы в документы по файлу — то, что уходит в нарезку.
+
+    Номера страниц в метаданных не остаётся: у файла её нет. Узлам её проставляет
+    `page_attribution` по смещению в тексте.
+
+    Аргументы:
+        pages: страницы корпуса в любом порядке.
+
+    Возвращает:
+        По одному Document на файл, страницы внутри — в порядке чтения.
+    """
+    by_file = {}
+    for page in pages:
+        by_file.setdefault(page.metadata["file_name"], []).append(page)
+
+    documents = []
+
+    for file_name, file_pages in sorted(by_file.items()):
+        file_pages.sort(key = lambda page: int(page.metadata["page_label"]))
+        first = file_pages[0]
+        documents.append(
+            Document(
+                doc_id = file_name,
+                text = PAGE_JOIN.join(page.text for page in file_pages),
+                metadata = {
+                    key: value
+                    for key, value in first.metadata.items()
+                    if key not in ("page_label", "page_end")
+                },
+            )
+        )
+
     hide_service_metadata(documents)
 
     return documents

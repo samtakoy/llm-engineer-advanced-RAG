@@ -7,13 +7,16 @@ from pathlib import Path
 from typing import Dict, List, Sequence
 
 from llama_index.core import Document
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser.interface import NodeParser
 from llama_index.core.schema import BaseNode, MetadataMode
+
+from rag_assistant.ingest.loader import merge_pages_into_files
+from rag_assistant.ingest.page_attribution import assign_pages
 
 
 def write_corpus(
     documents: Sequence[Document],
-    node_parser: SentenceSplitter,
+    node_parser: NodeParser,
     target_dir: Path,
 ) -> Dict[str, int]:
     """Режет документы и записывает нарезку в markdown, по файлу на документ.
@@ -28,7 +31,9 @@ def write_corpus(
     """
     target_dir.mkdir(parents = True, exist_ok = True)
 
-    nodes_by_source = group_nodes_by_source(node_parser.get_nodes_from_documents(list(documents)))
+    nodes = node_parser.get_nodes_from_documents(merge_pages_into_files(list(documents)))
+    assign_pages(nodes = nodes, pages = list(documents))
+    nodes_by_source = group_nodes_by_source(nodes)
     written = {}
 
     for source, nodes in nodes_by_source.items():
@@ -37,6 +42,62 @@ def write_corpus(
         written[source] = len(nodes)
 
     return written
+
+
+def write_cleaned_documents(
+    documents: Sequence[Document],
+    target_dir: Path,
+) -> Dict[str, int]:
+    """Записывает документы после чистки, но до нарезки, по файлу на отчёт.
+
+    Показывает, что видит сплиттер: разбор PDF, починенный markdown, сшитые через
+    границу листа таблицы, расставленные заголовки. Границы узлов сюда не попадают —
+    для них есть выгрузка нарезки.
+
+    Аргументы:
+        documents: документы, прочитанные из папки.
+        target_dir: папка, в которую пишутся файлы.
+
+    Возвращает:
+        Число страниц по каждому исходному файлу.
+    """
+    target_dir.mkdir(parents = True, exist_ok = True)
+
+    pages_by_source: Dict[str, List[Document]] = {}
+    for document in documents:
+        pages_by_source.setdefault(document.metadata.get("file_name", "документ"), []).append(document)
+
+    written = {}
+
+    for source, pages in pages_by_source.items():
+        pages.sort(key = lambda page: int(page.metadata.get("page_label", 0)))
+        target_path = target_dir / f"{Path(source).stem}_markdown.md"
+        target_path.write_text(render_cleaned_document(pages), encoding = "utf-8")
+        written[source] = len(pages)
+
+    return written
+
+
+def render_cleaned_document(pages: Sequence[Document]) -> str:
+    """Собирает страницы одного отчёта в один markdown.
+
+    Аргументы:
+        pages: страницы отчёта в порядке чтения.
+
+    Возвращает:
+        Текст отчёта. Перед каждой страницей стоит её номер комментарием markdown:
+        в тексте он не виден, а найти страницу по выгрузке позволяет. У страницы
+        со сшитой таблицей в комментарии стоят обе её страницы.
+    """
+    lines = []
+
+    for page in pages:
+        page_label = page.metadata.get("page_label", "—")
+        page_end = page.metadata.get("page_end")
+        number = f"{page_label}-{page_end}" if page_end else page_label
+        lines.append(f"<!-- стр. {number} -->\n\n{page.text.strip()}\n")
+
+    return "\n".join(lines)
 
 # TODO в отдельный файл
 def group_nodes_by_source(nodes: Sequence[BaseNode]) -> Dict[str, List[BaseNode]]:

@@ -14,6 +14,17 @@ uv run python -m eval.run full             # поиск и ответы моде
 uv run python -m eval.run full --judge     # то же плюс оценка ответов моделью, ~8 минут
 ```
 
+Техники поиска включаются флагами:
+
+```bash
+uv run python -m eval.run retrieval --filters          # отбор по тегам вопроса
+uv run python -m eval.run retrieval --rerank           # cross-encoder из RERANK_MODEL
+uv run python -m eval.run retrieval --hybrid           # вектор плюс лексический BM25
+uv run python -m eval.run retrieval --mmr              # разбавление выдачи, вес из MMR_THRESHOLD
+```
+
+Флаги складываются: прогон с флагом и без него под разными именами и даёт сравнение.
+
 Имя снимка задаётся `--name`, отчёты пишутся в `docs/eval/<имя>.md` и `<имя>.json`.
 Markdown — для чтения, json — чтобы сравнить два прогона.
 

@@ -26,6 +26,8 @@ class Source:
         score: близость фрагмента к вопросу.
         file_name: имя исходного файла.
         page_label: номер страницы либо None, если источник без страниц.
+        page_end: последняя страница фрагмента, если таблица сшита через границу
+            листа. None — фрагмент лежит на одной странице.
     """
 
     citation: str
@@ -33,6 +35,7 @@ class Source:
     score: float
     file_name: str
     page_label: str | None
+    page_end: str | None
 
 
 @dataclass(frozen = True)
@@ -98,7 +101,6 @@ def create_vector_retriever(
 
 def create_retriever(
     index: VectorStoreIndex,
-    config: AppConfig,
     filters: MetadataFilters | None,
     top_k: int,
     lexical_index: LexicalIndex | None,
@@ -108,7 +110,6 @@ def create_retriever(
 
     Аргументы:
         index: векторный индекс документов вместе с докстором.
-        config: конфигурация приложения.
         filters: отбор документов по метаданным либо None — искать по всему корпусу.
             Отбор идёт до поиска, поэтому выдача набирается уже внутри
             отобранных документов.
@@ -159,36 +160,18 @@ class RagEngine:
 
     def __init__(
         self,
-        index: VectorStoreIndex,
-        config: AppConfig,
-        filters: MetadataFilters | None,
+        retriever: BaseRetriever,
         reranker: SentenceTransformerRerank | None,
-        lexical_index: LexicalIndex | None,
-        mmr_threshold: float | None,
     ) -> None:
-        """Создаёт движок запросов поверх индекса.
+        """Создаёт движок запросов поверх готового поиска.
+        Поиск собирается снаружи.
 
         Аргументы:
-            index: векторный индекс документов.
-            config: конфигурация приложения.
-            filters: отбор документов по метаданным либо None — искать по всему корпусу.
+            retriever: поиск, отдающий фрагменты по вопросу.
             reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
-            lexical_index: индекс поиска по словам либо None — искать только векторно.
-            mmr_threshold: доля веса, отданная близости к вопросу; остальное уходит
-                непохожести фрагментов. None — отбирать только по близости.
         """
         self.query_engine = RetrieverQueryEngine.from_args(
-            retriever = create_retriever(
-                index = index,
-                config = config,
-                filters = filters,
-                top_k = retrieval_top_k(
-                    config = config,
-                    reranker = reranker,
-                ),
-                lexical_index = lexical_index,
-                mmr_threshold = mmr_threshold,
-            ),
+            retriever = retriever,
             text_qa_template = QA_TEMPLATE,
             node_postprocessors = [reranker] if reranker is not None else [],
         )
@@ -221,7 +204,11 @@ def to_source(node: NodeWithScore) -> Source:
     """
     file_name = node.metadata.get("file_name", "документ")
     page_label = node.metadata.get("page_label")
-    citation = f"{file_name}, стр. {page_label}" if page_label else file_name
+    # Узел со сшитой таблицей лежит на двух листах, и ссылка называет оба: иначе
+    # число со второго листа подписано страницей, на которой его нет.
+    page_end = node.metadata.get("page_end")
+    pages = f"{page_label}-{page_end}" if page_end and page_end != page_label else page_label
+    citation = f"{file_name}, стр. {pages}" if page_label else file_name
 
     return Source(
         citation = citation,
@@ -229,4 +216,5 @@ def to_source(node: NodeWithScore) -> Source:
         score = node.score or 0.0,
         file_name = file_name,
         page_label = page_label,
+        page_end = page_end,
     )

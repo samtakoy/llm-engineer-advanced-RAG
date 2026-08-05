@@ -1,4 +1,5 @@
 """Векторный индекс: ChromaDB как хранилище, VectorStoreIndex как логический слой."""
+import sys
 from typing import Callable, List
 
 import chromadb
@@ -10,6 +11,8 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from rag_assistant.config import AppConfig
 from rag_assistant.index_signature import build_signature, verify_signature
+from rag_assistant.ingest.loader import merge_pages_into_files
+from rag_assistant.ingest.page_attribution import assign_pages
 from rag_assistant.models import create_node_parser
 
 # Векторы нормализованы, поэтому косинус и заданная по умолчанию l2 дают один и тот же
@@ -45,15 +48,30 @@ def build_index(
 ) -> VectorStoreIndex:
     """Строит индекс с нуля: документы режутся на узлы и векторизуются.
 
+    Режется файл целиком, а не страница: иначе стек заголовков, порядок чтения
+    и таблицы рвутся на каждой границе листа. Номер страницы узел получает по своему смещению в тексте файла.
+
     Аргументы:
         config: конфигурация приложения.
         client: клиент ChromaDB.
-        documents: документы для индексации.
+        documents: страницы корпуса.
 
     Возвращает:
         Индекс поверх новой коллекции ChromaDB.
     """
-    nodes = create_node_parser(config).get_nodes_from_documents(documents, show_progress = True)
+    nodes = create_node_parser(config).get_nodes_from_documents(
+        merge_pages_into_files(documents),
+        show_progress = True,
+    )
+    attribution = assign_pages(nodes = nodes, pages = documents)
+
+    if attribution.missed:
+        print(
+            f"Узлов без страницы: {attribution.missed} — их текст не нашёлся в файле, "
+            f"и ссылка на них назовёт только файл.",
+            file = sys.stderr,
+        )
+
     collection = client.create_collection(
         name = config.chroma_collection,
         configuration = COLLECTION_CONFIGURATION,

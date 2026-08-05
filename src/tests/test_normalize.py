@@ -18,9 +18,17 @@ def test_strip_emphasis_spans_line_breaks() -> None:
     assert strip_emphasis("**_первая\nвторая_**") == "первая\nвторая"
 
 
-def test_strip_emphasis_keeps_plain_bold() -> None:
-    """Обычный жирный текст не трогается: под замену идёт только жирный курсив."""
-    assert strip_emphasis("**Раздел 1**") == "**Раздел 1**"
+def test_strip_emphasis_drops_plain_bold() -> None:
+    """Обычный жирный тоже снимается: им разбор помечает имена полей формы."""
+    assert strip_emphasis("**Раздел 1**") == "Раздел 1"
+
+
+def test_strip_emphasis_joins_broken_field_name() -> None:
+    """Имя поля, разорванное жирным посреди, снова читается целиком."""
+    assert (
+        strip_emphasis("**Полное фирменное** **наименование эмитента:**")
+        == "Полное фирменное наименование эмитента:"
+    )
 
 
 def test_demote_false_heading_drops_marks_on_lowercase_start() -> None:

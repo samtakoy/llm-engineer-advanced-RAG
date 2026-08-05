@@ -7,8 +7,8 @@
 
 Флаг --filters ограничивает поиск разметкой документов из поля tags у вопроса,
 --rerank переставляет найденное cross-encoder, --hybrid добавляет к векторному
-поиску лексический. Прогон с флагом и без него под разными именами (--name)
-и даёт сравнение.
+поиску лексический, --mmr разбавляет выдачу непохожими фрагментами. Прогон
+с флагом и без него под разными именами (--name) и даёт сравнение.
 
 Режим retrieval быстрый, потому что модель не вызывается: на нём и подбираются настройки
 поиска. Полный прогон нужен для отчёта и для метрик, которые считаются по тексту ответа.
@@ -22,6 +22,7 @@ from typing import List, Set
 import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.llms import LLM
+from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.vector_stores import MetadataFilters
 from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
 
@@ -29,7 +30,7 @@ from eval.cases import QUESTIONS_PATH, Case, Page, load_cases
 from eval.judge import judge_answer
 from eval.metrics import measure, summarize
 from eval.report import SnapshotBelongsToOtherSettings, print_summary, print_table, save_report
-from eval.results import CaseRun, to_pages
+from eval.results import CaseRun, page_range, to_pages
 from rag_assistant.config import AppConfig
 from rag_assistant.engine import (
     RagEngine,
@@ -63,46 +64,31 @@ def load_known_pages(config: AppConfig) -> Set[Page]:
     records = collection.get(include = ["metadatas"])
 
     return {
-        Page(document = metadata["file_name"], number = int(metadata["page_label"]))
+        Page(document = metadata["file_name"], number = number)
         for metadata in records["metadatas"]
         if str(metadata.get("page_label", "")).isdigit()
+        for number in page_range(
+            first = str(metadata["page_label"]),
+            last = str(metadata.get("page_end", "")) or None,
+        )
     }
 
 
 def retrieve_sources(
-    index: VectorStoreIndex,
-    config: AppConfig,
+    retriever: BaseRetriever,
     question: str,
-    filters: MetadataFilters | None,
     reranker: SentenceTransformerRerank | None,
-    lexical_index: LexicalIndex | None,
-    mmr_threshold: float | None,
 ) -> List[Source]:
     """Возвращает фрагменты по вопросу, не обращаясь к модели.
 
     Аргументы:
-        index: векторный индекс документов.
-        config: конфигурация приложения.
+        retriever: поиск, отдающий фрагменты по вопросу.
         question: вопрос.
-        filters: отбор документов по метаданным либо None — искать по всему корпусу.
         reranker: реранкер либо None, если порядок выдачи остаётся за поиском.
-        lexical_index: индекс поиска по словам либо None — искать только векторно.
-        mmr_threshold: вес близости против разнообразия либо None — только близость.
 
     Возвращает:
         Фрагменты в том порядке, в котором их увидела бы модель.
     """
-    retriever = create_retriever(
-        index = index,
-        config = config,
-        filters = filters,
-        top_k = retrieval_top_k(
-            config = config,
-            reranker = reranker,
-        ),
-        lexical_index = lexical_index,
-        mmr_threshold = mmr_threshold,
-    )
     nodes = retriever.retrieve(question)
 
     # Режим retrieval идёт мимо движка запросов, а постпроцессоры применяет он.
@@ -142,33 +128,30 @@ def run_case(
     Возвращает:
         Результат прогона вопроса.
     """
-    # Замеряется работа пайплайна: поиск, а в полном режиме ещё и ответ модели.
+    # Замеряется работа пайплайна: поиск и ответ модели.
     # Судья остаётся снаружи — он часть замера, а не того, что меряют.
     started = time.perf_counter()
 
-    if with_answer:
-        # Движок собирается на вопрос, потому что фильтр у каждого вопроса свой.
-        # Сборка — только обёртки над открытым индексом, без обращений к диску и сети.
-        engine = RagEngine(
-            index = index,
+    retriever = create_retriever(
+        index = index,
+        filters = filters,
+        top_k = retrieval_top_k(
             config = config,
-            filters = filters,
             reranker = reranker,
-            lexical_index = lexical_index,
-            mmr_threshold = mmr_threshold,
-        )
-        response = engine.ask(case.question)
+        ),
+        lexical_index = lexical_index,
+        mmr_threshold = mmr_threshold,
+    )
+
+    if with_answer:
+        response = RagEngine(retriever = retriever, reranker = reranker).ask(case.question)
         sources = response.sources
         answer = response.text
     else:
         sources = retrieve_sources(
-            index = index,
-            config = config,
+            retriever = retriever,
             question = case.question,
-            filters = filters,
             reranker = reranker,
-            lexical_index = lexical_index,
-            mmr_threshold = mmr_threshold,
         )
         answer = ""
 
@@ -298,6 +281,9 @@ def main() -> None:
     reranker = create_reranker(config) if arguments.rerank else None
     lexical_index = create_lexical_index(index) if arguments.hybrid else None
 
+    # Список техник собирается до прогона.
+    modes = enabled_modes(arguments)
+
     runs = []
     for case in cases:
         print(f"[{case.number:>2}/{len(cases)}] {case.question[:60]}")
@@ -330,7 +316,7 @@ def main() -> None:
             summary = summary,
             config = config,
             name = arguments.name,
-            modes = enabled_modes(arguments),
+            modes = modes,
         )
     except SnapshotBelongsToOtherSettings as conflict:
         # Прогон уже сделан, терять его из-за занятого имени нельзя: показываем причину,
