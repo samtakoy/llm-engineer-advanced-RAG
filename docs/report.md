@@ -37,7 +37,7 @@ RERANK_MODEL=BAAI/bge-reranker-v2-m3
 
 ## Метрики
 
-Описание метрик тут: TODO ссылка на src/eval/README.md 
+Описание метрик тут: [src/eval/README.md](../src/eval/README.md).
 
 ## Бейзлайн
 
@@ -49,8 +49,7 @@ RERANK_MODEL=BAAI/bge-reranker-v2-m3
 uv run python -m eval.run full --judge --name baseline
 ```
 
-Снимок базового RAG с метриками и настройками, при которых снят:
-[docs/eval/baseline.md](eval/baseline.md.bak).
+Результат с метриками: [docs/eval/baseline.md](eval/baseline.md).
 
 ## Фильтрация по Metadata
 
@@ -61,13 +60,25 @@ uv run python -m eval.run full --judge --name baseline
 ```
 uv run python -m eval.run full --judge --filters --name filters
 ```
-Результат с метриками: TODO
-У скольких вопросов были теги: TODO
-Как повлияло: TODO
+Результат с метриками: [docs/eval/filters.md](eval/filters.md).
+У скольких вопросов были теги: 11 из 20 — 5 с тегом year:2024, 6 с тегом year:2025.
+Остальным 9 тег не ставится: факт собирается из обоих отчётов, фильтровать нечем.
 
-Улучшения есть местами - возможно в пределах погрешности, для точности проверить на конкретных вопросах - отдельно
+Примеры вопросов с тегами:
+```
+2024: Сколько пациентов приходило в поликлинику в 2023 году?
+2025: Какую долю выручки составила EBITDA группы в 2025 году?
+```
 
+Как повлияло:
+
+Улучшения есть местами - возможно в пределах погрешности. При этом faithfulness и correctness припали (судья оцели хуже).
+
+Для точности проверим на конкретных вопросах - отдельно в ask режиме: 
+
+```
 TODO пример запуска на одном вопросе без тегов и с тегом года
+```
 
 ## Реранкинг
 
@@ -80,7 +91,7 @@ CANDIDATE_TOP_K=20
 ```
 uv run python -m eval.run full --judge --rerank --name rerank
 ```
-Результат с метриками: TODO
+Результат с метриками: [docs/eval/rerank.md](eval/rerank.md).
 Как повлияло: 
 - где-то ухудшился в сравнении с baseline
 - на уровне шума - после поправки размеров макс чанка реранкера - вроде метрики все чуть подросли - шум или нет?
@@ -91,7 +102,7 @@ uv run python -m eval.run full --judge --rerank --name rerank
 ```
 uv run python -m eval.run full --judge --hybrid  --rerank --name hybrid
 ```
-Результат с метриками: TODO
+Результат с метриками: [docs/eval/hybrid.md](eval/hybrid.md).
 
 Как повлияло:
 
@@ -103,7 +114,10 @@ MMR_THRESHOLD=0 uv run python -m eval.run full --judge --filters --hybrid --rera
 MMR_THRESHOLD=0.3 uv run python -m eval.run full --judge --filters --hybrid --rerank --name hybrid-mmr03
 MMR_THRESHOLD=0.6 uv run python -m eval.run full --judge --filters --hybrid --rerank --name hybrid-mmr06
 ```
-Результат с метриками: TODO
+Результаты с метриками: 
+[docs/eval/hybrid-mmr00.md](eval/hybrid-mmr00.md)
+[docs/eval/hybrid-mmr03.md](eval/hybrid-mmr03.md)
+[docs/eval/hybrid-mmr06.md](eval/hybrid-mmr06.md)
 
 Как повлияло:
 

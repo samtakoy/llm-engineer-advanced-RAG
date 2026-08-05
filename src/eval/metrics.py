@@ -66,7 +66,9 @@ class CaseMetrics:
         relevant_fragments: сколько фрагментов выдачи попало на эталонную страницу.
         retrieved_fragments: сколько фрагментов выдача принесла всего. Это и есть
             TOP_K, если у всех фрагментов известна страница.
-        unique_pages: сколько разных страниц в выдаче, мера её избыточности.
+        unique_pages: по скольким разным листам отчёта разошлись фрагменты выдачи.
+            Фрагмент считается по своему первому листу, поэтому сшитая таблица
+            на двух листах считается один раз, и потолок здесь — TOP_K.
         snippets_found: сколько эталонных подстрок дошло до модели в тексте выдачи.
         snippets_total: сколько эталонных подстрок у вопроса всего.
         citations: сколько ссылок удалось разобрать — понятно, на какой файл и
@@ -323,7 +325,9 @@ def measure(
         reciprocal_rank = reciprocal_rank(retrieved, case.expected_pages),
         relevant_fragments = count_relevant_fragments(retrieved_groups, case.expected_pages),
         retrieved_fragments = len(retrieved_groups),
-        unique_pages = len(pages_in_context),
+        # Фрагмент представлен своим первым листом: иначе сшитая таблица считалась бы
+        # за два листа, и число разных страниц выходило бы за TOP_K.
+        unique_pages = len({pages[0] for pages in retrieved_groups if pages}),
         snippets_found = count_found_snippets(context, case.expected_snippets),
         snippets_total = len(case.expected_snippets),
         citations = len(citations),

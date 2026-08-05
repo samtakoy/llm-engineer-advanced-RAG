@@ -14,6 +14,16 @@ from rag_assistant.prompts import QA_TEMPLATE_TEXT
 
 REPORTS_DIR = PROJECT_ROOT / "docs" / "eval"
 
+# Что подсветить жирным в отчёте.
+KEY_METRICS = (
+    "page_hit_rate@3",
+    "mrr",
+    "precision@k",
+    "fact_hit_rate",
+    "correctness",
+    "faithfulness",
+)
+
 
 def print_table(runs: List[CaseRun]) -> None:
     """Печатает результаты по каждому вопросу одной строкой.
@@ -142,17 +152,29 @@ def format_failed(measure: Measure) -> str:
     return "не зачлось: " + ", ".join(str(number) for number in measure.failed)
 
 
-def format_distinct_pages(runs: List[CaseRun]) -> str:
-    """Печатает, по скольким разным страницам разошлась выдача.
+def format_metric_name(name: str) -> str:
+    """Печатает имя метрики для таблицы отчёта.
 
-    Метрика диагностическая: сама по себе решения не подсказывает, но по ней будет
-    виден эффект MMR, когда он появится в поиске.
+    Аргументы:
+        name: имя метрики.
+
+    Возвращает:
+        Имя жирным, если метрика входит в KEY_METRICS, иначе как есть.
+    """
+    return f"**{name}**" if name in KEY_METRICS else name
+
+
+def format_distinct_pages(runs: List[CaseRun]) -> str:
+    """Печатает, по скольким разным листам отчёта разошлась выдача.
+
+    Число диагностическое: само по себе решения не подсказывает, но по нему видно,
+    сработал ли MMR — его задача как раз развести выдачу по разным листам.
 
     Аргументы:
         runs: результаты прогона.
 
     Возвращает:
-        Строку со средним числом страниц и номерами вопросов с повтором страницы.
+        Строку со средним числом листов и номерами вопросов, где лист повторился.
     """
     if not runs:
         return "страниц в выдаче: нет данных"
@@ -161,7 +183,7 @@ def format_distinct_pages(runs: List[CaseRun]) -> str:
     repeated = [
         run.case.number
         for run in runs
-        if run.metrics.unique_pages < len(to_pages(run.sources))
+        if run.metrics.unique_pages < run.metrics.retrieved_fragments
     ]
     average = sum(pages) / len(pages)
     tail = f", повтор страницы в вопросах: {', '.join(str(number) for number in repeated)}"
@@ -218,7 +240,7 @@ def render_report(
         "|---|---|---|---|",
     ]
     lines.extend(
-        f"| {name} | {format_value(measure)} | {format_count(measure)} | "
+        f"| {format_metric_name(name)} | {format_value(measure)} | {format_count(measure)} | "
         f"{', '.join(str(number) for number in measure.failed) or '—'} |"
         for name, measure in summary.items()
     )

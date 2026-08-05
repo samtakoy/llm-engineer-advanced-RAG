@@ -331,7 +331,7 @@ def main() -> None:
 
     runs = []
     for case in cases:
-        print(f"[{case.number:>2}/{len(cases)}] {case.question[:60]}")
+        print(f"[{case.number:>2}/{len(cases)}] {case.question[:200]}")
         filters = build_filters(case.tags) if arguments.filters else None
         runs.append(
             run_case(
