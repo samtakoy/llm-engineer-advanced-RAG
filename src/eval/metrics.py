@@ -456,8 +456,10 @@ def collect_precision(answerable: Sequence[tuple]) -> Measure:
         answerable: пары «вопрос, метрики» по вопросам, у которых есть эталон.
 
     Возвращает:
-        Метрику. Не зачтёнными считаются вопросы, где выдача не принесла ни одного
-        эталонного фрагмента: доля меньше единицы здесь норма, а не сбой.
+        Метрику без списка не зачтённых вопросов: счёт здесь во фрагментах, а список
+        в номерах вопросов, и рядом они читаются как одна величина. Промахи по вопросам
+        видны в разделах отчёта, где для каждого напечатано «из N найденных фрагментов
+        нужными были M».
     """
     relevant = sum(metrics.relevant_fragments for _, metrics in answerable)
     total = sum(metrics.retrieved_fragments for _, metrics in answerable)
@@ -470,7 +472,7 @@ def collect_precision(answerable: Sequence[tuple]) -> Measure:
         scored = relevant,
         total = total,
         unit = "фрагментов",
-        failed = [case.number for case, metrics in answerable if not metrics.relevant_fragments],
+        failed = [],
     )
 
 

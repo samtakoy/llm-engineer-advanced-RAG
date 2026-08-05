@@ -17,7 +17,7 @@
 
 ## Отчет
 
-Тут TODO ссылка на docs/report.md
+[docs/report.md](docs/report.md)
 
 ## Документы
 
@@ -47,7 +47,10 @@ uv run src/scripts/fetch_reports.py
 
 После добавления отчётов нужен `uv run main.py reindex`.
 
-Pdf отчетов добавлены для наглядности в репозиторий: TODO 2 ссылки
+Pdf отчетов добавлены для наглядности в репозиторий:
+
+- [FY2024_Issuer's report.pdf](documents/umg/FY2024_Issuer's%20report.pdf)
+- [Отчет эмитента МКПАО ЮМГ 12м2025.pdf](documents/umg/Отчет%20эмитента%20МКПАО%20ЮМГ%2012м2025.pdf)
 
 ## Запуск
 
@@ -146,7 +149,10 @@ uv run main.py parse
 FY2024_Issuer's report_markdown.md
 ```
 
-Пример: TODO 2 ссылки на сгенерированный файлы FY2024_Issuer's report.pdf + FY2024_Issuer's report_markdown.md
+Пример:
+
+- [FY2024_Issuer's report.md](parsed/FY2024_Issuer's%20report.md)
+- [FY2024_Issuer's report_markdown.md](parsed/FY2024_Issuer's%20report_markdown.md)
 
 ## Как устроено
 
@@ -186,6 +192,30 @@ uv run python -m eval.run retrieval --rerank --hybrid --name flat_advanced
 ```
 ## Настройки env
 
-```
-TODO
-```
+<details>
+<summary>Список параметров</summary>
+
+| Параметр | Что это |
+|---|---|
+| `LOCAL_BASE_URL` | адрес OpenAI-совместимого сервера |
+| `LOCAL_API_KEY` | ключ сервера |
+| `LOCAL_MODEL` | модель, которая отвечает |
+| `LOCAL_REASONING_EFFORT` | уровень reasoning: low, medium, high. Пусто — выключен |
+| `JUDGE_MODEL` | модель-судья в прогоне вопросов. Пусто — та же, что отвечает |
+| `LLM_TEMPERATURE` | температура генерации |
+| `LLM_MAX_TOKENS` | лимит токенов ответа |
+| `LLM_CONTEXT_WINDOW` | размер контекстного окна модели |
+| `LLM_TIMEOUT_SECONDS` | таймаут запроса к модели |
+| `EMBEDDING_MODEL` | модель эмбеддингов из HuggingFace |
+| `RERANK_MODEL` | cross-encoder для флага `--rerank`. Пусто — реранкинга нет |
+| `DOCUMENTS_DIR` | папка с исходными PDF |
+| `PARSED_DIR` | папка выгрузки нарезки |
+| `CHROMA_DIR` | папка векторов ChromaDB |
+| `CHROMA_COLLECTION` | имя коллекции векторов |
+| `CHUNK_SIZE` | размер чанка в токенах эмбеддера |
+| `CHUNK_OVERLAP` | перекрытие соседних чанков в токенах |
+| `TOP_K` | сколько фрагментов уходит модели в контекст |
+| `CANDIDATE_TOP_K` | сколько фрагментов поиск приносит реранкеру |
+| `MMR_THRESHOLD` | вес флагов `--mmr` и `--mmr2`: 1.0 — близость, 0.0 — разнообразие. Пусто — выключен |
+
+</details>

@@ -16,7 +16,6 @@ REPORTS_DIR = PROJECT_ROOT / "docs" / "eval"
 
 # Что подсветить жирным в отчёте.
 KEY_METRICS = (
-    "mrr",
     "precision@k",
     "fact_hit_rate",
     "correctness",
@@ -235,7 +234,7 @@ def render_report(
         "",
         "## Итого",
         "",
-        "| Метрика | Значение | Счёт | Не зачлось |",
+        "| Метрика | Значение | Счёт | Не зачлось в вопросах |",
         "|---|---|---|---|",
     ]
     lines.extend(

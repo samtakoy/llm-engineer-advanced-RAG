@@ -154,9 +154,10 @@ uv run python -m eval.run full --judge --rerank --name rerank
 Результат с метриками: [docs/eval/rerank.md](eval/rerank.md).
 
 Как повлияло: 
-- все метрики немного просели в сравнении с baseline
+- `fact_hit_rate` подрос с 0.877 до 0.947, занчимо просела оценка судьи `correctness` с 0.554 (10.52 из 19 вопросов) до (0.434	8.25 из 19 вопросов)
+- остальные на уровне шума
 
-Ну вот так - что поделать :) На ранних тестах - по мере добавления техник метрики росли немного на уровне шума, но во время попыток завести graph-rag я менял нарезку и чистку датасета. Теперь результат такой.
+На ранних тестах - по мере добавления техник метрики росли немного на уровне шума, но во время попыток завести graph-rag я менял нарезку и чистку датасета, а также добавлял вопросы нацеленные на graph rag. Теперь результат такой.
 
 ## Гибридный поиск с реранкингом
 
@@ -168,15 +169,15 @@ uv run python -m eval.run full --judge --hybrid  --rerank --name hybrid
 
 Как повлияло:
 
-Опять заметная просадка по всем метрикам. Ха-ха-ха.
+Опять колебания по всем метрикам на уровне шума.
 
 ## Гибридный поиск с реранкингом и разным MMR
 
 Запуск
 ```
-MMR_THRESHOLD=0 uv run python -m eval.run full --judge --filters --hybrid --rerank --name hybrid-mmr00
-MMR_THRESHOLD=0.3 uv run python -m eval.run full --judge --filters --hybrid --rerank --name hybrid-mmr03
-MMR_THRESHOLD=0.6 uv run python -m eval.run full --judge --filters --hybrid --rerank --name hybrid-mmr06
+MMR_THRESHOLD=0   uv run python -m eval.run full --judge --hybrid --rerank --mmr2 --name hybrid-mmr00
+MMR_THRESHOLD=0.3 uv run python -m eval.run full --judge --hybrid --rerank --mmr2 --name hybrid-mmr03
+MMR_THRESHOLD=0.6 uv run python -m eval.run full --judge --hybrid --rerank --mmr2 --name hybrid-mmr06
 ```
 Результаты с метриками: 
 [docs/eval/hybrid-mmr00.md](eval/hybrid-mmr00.md)
@@ -185,8 +186,11 @@ MMR_THRESHOLD=0.6 uv run python -m eval.run full --judge --filters --hybrid --re
 
 Как повлияло:
 
+
+
 # Сводная таблица: baseline/hybrid+reranking/hybrid+reranking+mmr 0.3
 
+TODO
 
 # Ответы на вопросы задания
 

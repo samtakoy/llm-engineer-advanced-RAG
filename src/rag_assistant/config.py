@@ -111,13 +111,13 @@ class AppConfig:
             llm_api_key = os.getenv("LOCAL_API_KEY", "lm-studio"),
             llm_model = local_model,
             judge_model = os.getenv("JUDGE_MODEL", "google/gemma-4-26b-a4b-qat") or local_model,
-            llm_temperature = float(os.getenv("LLM_TEMPERATURE", "0.1")),
-            llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "16384")),
+            llm_temperature = float(os.getenv("LLM_TEMPERATURE", "1.0")),
+            llm_max_tokens = int(os.getenv("LLM_MAX_TOKENS", "8000")),
             llm_context_window = int(os.getenv("LLM_CONTEXT_WINDOW", "32768")),
             llm_timeout_seconds = float(os.getenv("LLM_TIMEOUT_SECONDS", "600")),
             llm_reasoning_effort = os.getenv("LOCAL_REASONING_EFFORT") or None,
 
-            embedding_model = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-small"),
+            embedding_model = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
             # Окно у reranker-v2-m3 то же, что у bge-m3: родительский узел размером
             # в страницу проходит целиком, а не обрезается на середине.
             rerank_model = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3") or None,
@@ -128,11 +128,10 @@ class AppConfig:
             chroma_collection = os.getenv("CHROMA_COLLECTION", "documents"),
             docstore_path = chroma_dir / "docstore.json",
 
-            # Окно multilingual-e5-small — 512 токенов, остаток оставлен под
-            # служебные токены и префикс "passage:", который эмбеддер ставит сам.
-            chunk_size = int(os.getenv("CHUNK_SIZE", "480")),
+            # Окно bge-m3 — 8192 токена, чанк с метаданными помещается с запасом.
+            chunk_size = int(os.getenv("CHUNK_SIZE", "1024")),
             chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200")),
             top_k = int(os.getenv("TOP_K", "5")),
             candidate_top_k = int(os.getenv("CANDIDATE_TOP_K", "20")),
-            mmr_threshold = read_optional_float(os.getenv("MMR_THRESHOLD")),
+            mmr_threshold = read_optional_float(os.getenv("MMR_THRESHOLD", "1")),
         )
