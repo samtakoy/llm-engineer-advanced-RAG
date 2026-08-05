@@ -196,7 +196,12 @@ def create_reranker(config: AppConfig, top_n: int) -> SentenceTransformerRerank 
         model = config.rerank_model,
         top_n = top_n,
         device = select_device(),
-        keep_retrieval_score = True,
+        # Интеграция кладёт оценку поиска в метаданные узла до того, как соберёт
+        # пары для cross-encoder, а пары собираются из текста вместе с метаданными.
+        # Включённый ключ дописывал бы к каждому фрагменту строку вида
+        # «retrieval_score: 0.6110388977926645» — число, которое модель читает
+        # наравне с текстом отчёта.
+        keep_retrieval_score = False,
         # Класс из llama-index-core зашивает предел в 512 токенов и наружу его
         # не отдаёт; у этой же обёртки отдельной интеграцией настройки CrossEncoder
         # открыты. None означает «взять предел, объявленный самой моделью» — без
